@@ -1,6 +1,10 @@
-# 二级分销平台：初始数据模型
+# 二级分销平台
 
-本目录提供 PostgreSQL + Prisma ORM 7 的数据模型与订单支付后的分润结算函数。
+现行后端位于 [`python_backend/`](python_backend/README.md)，使用 FastAPI、SQLAlchemy 2.0 Async、asyncpg、Pydantic v2。沿用已有 PostgreSQL 表与 Prisma 迁移；原 TypeScript 实现保留在 `src/` 用于契约对照。`pnpm start` 现启动 Python 服务并保持 3000 端口，前端 BFF 无需改地址。
+
+先运行 `python3 -m venv python_backend/.venv`，安装 `python_backend/requirements.txt`，配置 `python_backend/.env`，再从 `python_backend/` 执行 `.venv/bin/uvicorn main:app --port 3000`。完整目录、启动步骤和接口兼容口径见 [`python_backend/README.md`](python_backend/README.md)。
+
+以下保留原始数据库迁移与 TypeScript 对照说明。
 
 ## 文件
 

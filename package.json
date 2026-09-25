@@ -6,9 +6,11 @@
     "db:validate": "prisma validate",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
-    "start": "node --import tsx src/server.ts",
-    "start:agent": "node --import tsx src/server.ts",
+    "start": "cd python_backend && .venv/bin/uvicorn main:app --host 0.0.0.0 --port ${PORT:-3000}",
+    "start:agent": "cd python_backend && .venv/bin/uvicorn main:app --host 0.0.0.0 --port ${PORT:-3000}",
+    "start:legacy": "node --import tsx src/server.ts",
     "test": "node --import tsx --test tests/*.test.ts",
+    "test:python": "cd python_backend && .venv/bin/python -m pytest -q",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
