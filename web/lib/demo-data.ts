@@ -3,6 +3,7 @@ import type { LedgerItem, LedgerPage, Overview, Referral, TeamMember } from "@/l
 // Public showcase data. These values do not come from platform accounts or APIs.
 export const demoOverview: Overview = {
   displayName: "青禾",
+  avatarUrl: null,
   balance: "12,486.70",
   totalEarned: "38,920.45",
   directAgentCount: 18,
@@ -25,6 +26,7 @@ export const demoLedgerItems: LedgerItem[] = profits.map((profit, index) => ({
   orderNo: `ORD-202609${String(22 - Math.floor(index / 4)).padStart(2, "0")}-${String(1086 - index).padStart(4, "0")}`,
   orderProfitAmount: profit,
   roleType: rates[index] === 49 ? "PROMOTER" : "PARENT",
+  earningType: rates[index] === 49 ? "OWN_ORDER" : "DOWNLINE_REWARD",
   rate: String(rates[index] / 100),
   ratePercent: rates[index],
   commissionAmount: (Math.round(Number(profit) * rates[index]) / 100).toFixed(2),

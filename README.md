@@ -2,6 +2,14 @@
 
 现行后端位于 [`python_backend/`](python_backend/README.md)，使用 FastAPI、SQLAlchemy 2.0 Async、asyncpg、Pydantic v2。沿用已有 PostgreSQL 表与 Prisma 迁移；原 TypeScript 实现保留在 `src/` 用于契约对照。`pnpm start` 现启动 Python 服务并保持 3000 端口，前端 BFF 无需改地址。
 
+## 代码来源与检查
+
+- `python_backend/app/schemas.py` 是 API 响应字段的唯一类型来源。修改后运行 `pnpm contract:generate`，将生成的 `web/lib/api-contract.generated.ts` 一起提交；`pnpm contract:check` 检查是否过期。
+- `web/components/`、`web/lib/`（不含服务器专用的 `proxy.ts`）及两处主题 CSS 是前端共享源码。`showcase-site/` 是独立的 Sites Git 工程，其对应文件由 `pnpm showcase:sync` 同步；发布前运行 `pnpm showcase:check` 和展示站构建。展示站路由保持演示数据模式。
+- `.github/workflows/checks.yml` 对根仓库运行 Python、TypeScript 和契约检查，并在隔离 PostgreSQL 测试库中执行真实的并发结算测试。本地运行该集成测试时，设置指向数据库名以 `_test` 结尾的 `TEST_DATABASE_URL`。
+- `src/` 是旧版 TypeScript 后端，仅用于迁移对照；正式 API 启动入口为 `python_backend/main.py`。
+- 管理员团队树的数据库聚合放在 `python_backend/app/queries/admin_tree.py`，路由仅负责鉴权、参数和返回契约。保持现有完整树响应，以免破坏已上线前端；代理规模显著增长时应增加分页或按节点加载的新 API。
+
 先运行 `python3 -m venv python_backend/.venv`，安装 `python_backend/requirements.txt`，配置 `python_backend/.env`，再从 `python_backend/` 执行 `.venv/bin/uvicorn main:app --port 3000`。完整目录、启动步骤和接口兼容口径见 [`python_backend/README.md`](python_backend/README.md)。
 
 以下保留原始数据库迁移与 TypeScript 对照说明。

@@ -11,6 +11,10 @@
     "start:legacy": "node --import tsx src/server.ts",
     "test": "node --import tsx --test tests/*.test.ts",
     "test:python": "cd python_backend && .venv/bin/python -m pytest -q",
+    "contract:generate": "python_backend/.venv/bin/python python_backend/tools/generate_ts_contracts.py",
+    "contract:check": "python_backend/.venv/bin/python python_backend/tools/generate_ts_contracts.py --check",
+    "showcase:sync": "node scripts/sync-showcase.mjs",
+    "showcase:check": "node scripts/sync-showcase.mjs --check",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

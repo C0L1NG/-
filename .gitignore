@@ -7,3 +7,6 @@ generated/
 python_backend/.venv/
 **/__pycache__/
 **/.pytest_cache/
+.DS_Store
+# The public Sites project has its own Git repository and deployment history.
+showcase-site/
