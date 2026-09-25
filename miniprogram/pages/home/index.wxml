@@ -1,0 +1,65 @@
+<view class="page">
+  <view class="status-space" style="height: {{statusBarHeight}}px"></view>
+  <view class="page-body">
+    <view class="header">
+      <view class="profile">
+        <view class="avatar">{{initials}}<view class="online-dot"></view></view>
+        <view class="profile-copy"><text class="greeting">早上好，</text><text class="nickname">{{nickname}}</text></view>
+      </view>
+      <view class="role-pill"><view class="role-dot"></view>{{identity}}</view>
+    </view>
+
+    <view class="intro">
+      <text class="eyebrow">YOUR SPACE</text>
+      <view class="headline">把每一份收获，握在手里<text class="headline-dot">.</text></view>
+      <view class="intro-subtitle">收入清晰可见，分享从容自在。</view>
+    </view>
+
+    <view class="hero-card">
+      <view class="hero-top"><text>我的可提现佣金</text><view class="available-pill"><view class="available-dot"></view>可用余额</view></view>
+      <view class="balance-row">
+        <view class="balance-wrap"><text class="currency">¥</text><text class="balance-number {{balanceLong ? 'balance-number-long' : ''}}">{{amountHidden ? '••••••' : balance}}</text></view>
+        <button class="eye-button" aria-label="{{amountHidden ? '显示金额' : '隐藏金额'}}" bindtap="toggleBalance"><view class="eye-shape"><view class="eye-pupil"></view></view></button>
+      </view>
+      <view class="hero-caption"><view class="wallet-mark"></view>收益已入账，随时查看每笔来源</view>
+      <view class="hero-actions">
+        <button class="primary-action" bindtap="openSettlement">申请提现 <text class="action-arrow">↗</text></button>
+        <button class="secondary-action" bindtap="openPoster">分享海报与邀请码</button>
+      </view>
+    </view>
+
+    <view class="section-heading"><text class="section-title">你的进展</text><text class="section-description">每一步都算数</text></view>
+    <view class="bento">
+      <button class="bento-card team-card" bindtap="openTeam">
+        <view class="bento-top"><text>直属下线团队</text><view class="team-line-icon"></view></view>
+        <view class="team-count">{{directAgentCount}}<text>人</text></view>
+        <view class="avatar-row"><view wx:for="{{teamFaces}}" wx:key="id" class="team-avatar" style="animation-delay: {{item.index * 80}}ms">{{item.initial}}</view><text class="team-hint">{{teamFaces.length ? '一起向前' : '邀请伙伴'}}</text></view>
+      </button>
+      <view class="bento-card month-card">
+        <view class="bento-top"><text>本月累计分成</text><text class="month-arrow">↗</text></view>
+        <view class="month-amount">{{amountHidden ? '¥ ••••' : '¥ ' + monthEarnedShort}}</view>
+        <view class="month-pill">本月已入账</view>
+      </view>
+    </view>
+
+    <view class="today-strip"><view class="today-dot"></view><text>今日预计</text><text class="today-value">{{amountHidden ? '+ ¥ ••••' : '+ ¥ ' + todayEstimated}}</text></view>
+
+    <view class="section-heading activity-heading"><view><text class="section-title">近期分润</text><text class="activity-description">每一笔，都有迹可循</text></view><button class="filter-button" bindtap="toggleFilter">{{activityFilterLabel}} <text>⌄</text></button></view>
+    <view wx:if="{{filterOpen}}" class="filter-menu">
+      <button data-filter="all" bindtap="chooseFilter" class="{{activityFilter === 'all' ? 'filter-active' : ''}}">全部</button>
+      <button data-filter="own" bindtap="chooseFilter" class="{{activityFilter === 'own' ? 'filter-active' : ''}}">自己出单</button>
+      <button data-filter="team" bindtap="chooseFilter" class="{{activityFilter === 'team' ? 'filter-active' : ''}}">团队奖励</button>
+    </view>
+    <view class="activity-list">
+      <view wx:if="{{loading}}" class="empty-state">正在加载收益记录…</view>
+      <view wx:elif="{{!filteredActivity.length}}" class="empty-state">这里暂时没有相应的分润记录。</view>
+      <button wx:for="{{filteredActivity}}" wx:key="id" data-id="{{item.id}}" bindtap="openActivity" class="activity-row">
+        <view class="activity-icon {{item.iconClass}}"><view wx:if="{{item.roleType === 'PROMOTER'}}" class="bag-icon"></view><view wx:else class="people-icon"><view></view><view></view></view></view>
+        <view class="activity-copy"><view class="activity-title">{{item.title}} <text>#{{item.orderShort}}</text></view><view class="activity-subtitle">{{item.rate}} {{item.sourceText}} · {{item.time}}</view></view>
+        <view class="activity-amount">{{amountHidden ? '+¥••••' : '+¥' + item.amount}}</view>
+      </button>
+    </view>
+    <button class="all-ledger" bindtap="openLedger">查看全部分润 <text>→</text></button>
+    <view class="footnote">金额以平台实际结算为准 · 时间以 UTC 显示</view>
+  </view>
+</view>

@@ -1,0 +1,8 @@
+<view class="page referral-page">
+  <view class="eyebrow">SHARE YOUR SPACE</view>
+  <view class="title">邀请伙伴，一起向前。</view>
+  <view class="subtitle">扫码加入你的直属团队，专属关系自动记录。</view>
+  <view class="poster-card"><canvas canvas-id="poster" class="poster-canvas"></canvas></view>
+  <button class="button" disabled="{{!posterPath}}" bindtap="savePoster">保存分享海报</button>
+  <view class="code-line">专属邀请码 <text class="mono">{{referral ? referral.referralCode : '生成中…'}}</text></view>
+</view>

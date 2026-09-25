@@ -1,0 +1,9 @@
+page { background: #F6F7F2; color: #132A00; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+.page { padding: 40rpx; }
+.card { margin-bottom: 20rpx; padding: 30rpx; border-radius: 34rpx; background: #fff; box-shadow: 0 12rpx 42rpx rgba(19,42,0,.04); }
+.label { color: #899687; font-size: 23rpx; }
+.mono { font-family: Menlo, Monaco, monospace; font-variant-numeric: tabular-nums; }
+.value { margin-top: 18rpx; font-size: 48rpx; font-weight: 700; }
+.button { height: 94rpx; border-radius: 999rpx; background: #9FE870; color: #132A00; font-size: 27rpx; font-weight: 700; }
+.button::after { border: 0; }
+.empty { padding: 80rpx 0; color: #9AA797; font-size: 25rpx; text-align: center; }

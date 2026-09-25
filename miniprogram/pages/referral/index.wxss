@@ -1,0 +1,10 @@
+.referral-page { padding-top: 54rpx; }
+.eyebrow { color: #9AA797; font-size: 20rpx; font-weight: 700; letter-spacing: 4rpx; }
+.title { margin-top: 17rpx; color: #132A00; font-size: 43rpx; font-weight: 800; letter-spacing: -2rpx; }
+.subtitle { margin: 15rpx 0 38rpx; color: #899687; font-size: 23rpx; }
+.poster-card { padding: 18rpx; border-radius: 46rpx; background: #fff; box-shadow: 0 20rpx 70rpx rgba(19,42,0,.06); }
+.poster-canvas { display: block; width: 600rpx; max-width: 100%; height: 900rpx; margin: 0 auto; }
+.button { margin-top: 34rpx; }
+button[disabled] { opacity: .45; }
+.code-line { margin-top: 28rpx; color: #899687; font-size: 22rpx; text-align: center; }
+.code-line text { margin-left: 12rpx; color: #132A00; font-weight: 700; }

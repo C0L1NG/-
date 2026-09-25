@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN @map("admin")
+  AGENT @map("agent")
+
+  @@map("user_role")
+}
+
+enum PaymentStatus {
+  PENDING  @map("pending")
+  PAID     @map("paid")
+  FAILED   @map("failed")
+  REFUNDED @map("refunded")
+
+  @@map("payment_status")
+}
+
+enum SettlementStatus {
+  PENDING    @map("pending")
+  PROCESSING @map("processing")
+  SETTLED    @map("settled")
+  REVERSED   @map("reversed")
+
+  @@map("settlement_status")
+}
+
+enum CommissionRole {
+  PROMOTER @map("promoter")
+  PARENT   @map("parent")
+
+  @@map("commission_role")
+}
+
+model User {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  role           UserRole @default(AGENT)
+  displayName    String?  @map("display_name") @db.VarChar(80)
+  avatarUrl      String?  @map("avatar_url") @db.VarChar(512)
+  wechatOpenId   String?  @unique(map: "users_wechat_open_id_key") @map("wechat_open_id") @db.VarChar(64)
+  wechatUnionId  String?  @unique(map: "users_wechat_union_id_key") @map("wechat_union_id") @db.VarChar(64)
+  referralCode   String?  @unique(map: "users_referral_code_key") @map("referral_code") @db.VarChar(64)
+  parentId       String?  @map("parent_id") @db.Uuid
+  parentBoundAt  DateTime? @map("parent_bound_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  parent         User?           @relation("AgentHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "users_parent_id_fkey")
+  children       User[]          @relation("AgentHierarchy")
+  wallet         Wallet?
+  promotedOrders Order[]         @relation("OrderPromoter")
+  commissions    CommissionLog[] @relation("CommissionRecipient")
+
+  @@index([parentId], map: "users_parent_id_idx")
+  @@map("users")
+}
+
+model Order {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNo          String           @unique(map: "orders_order_no_key") @map("order_no") @db.VarChar(64)
+  // External customer identifier; this schema does not define a customers table.
+  customerId       String           @map("customer_id") @db.VarChar(128)
+  promoterId       String           @map("promoter_id") @db.Uuid
+  totalAmount      Decimal          @map("total_amount") @db.Decimal(18, 2)
+  profitAmount     Decimal          @map("profit_amount") @db.Decimal(18, 2)
+  paymentStatus    PaymentStatus    @default(PENDING) @map("payment_status")
+  settlementStatus SettlementStatus @default(PENDING) @map("settlement_status")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  promoter       User            @relation("OrderPromoter", fields: [promoterId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_promoter_id_fkey")
+  commissionLogs CommissionLog[]
+  platformCommission PlatformCommissionLog?
+
+  @@index([customerId], map: "orders_customer_id_idx")
+  @@index([promoterId], map: "orders_promoter_id_idx")
+  @@map("orders")
+}
+
+model Wallet {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @unique(map: "wallets_user_id_key") @map("user_id") @db.Uuid
+  balance       Decimal  @default(0) @db.Decimal(18, 2)
+  frozenBalance Decimal  @default(0) @map("frozen_balance") @db.Decimal(18, 2)
+  totalEarned   Decimal  @default(0) @map("total_earned") @db.Decimal(18, 2)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "wallets_user_id_fkey")
+
+  @@map("wallets")
+}
+
+model CommissionLog {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String         @map("order_id") @db.Uuid
+  recipientId      String         @map("recipient_id") @db.Uuid
+  roleType         CommissionRole @map("role_type")
+  rate             Decimal        @db.Decimal(7, 6)
+  commissionAmount Decimal        @map("commission_amount") @db.Decimal(18, 2)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "commission_logs_order_id_fkey")
+  recipient User  @relation("CommissionRecipient", fields: [recipientId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "commission_logs_recipient_id_fkey")
+
+  @@unique([orderId, roleType], map: "commission_logs_order_id_role_type_key")
+  @@index([recipientId, createdAt], map: "commission_logs_recipient_id_created_at_idx")
+  @@map("commission_logs")
+}
+
+model PlatformCommissionLog {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String   @unique(map: "platform_commission_logs_order_id_key") @map("order_id") @db.Uuid
+  rate             Decimal  @db.Decimal(7, 6)
+  commissionAmount Decimal  @map("commission_amount") @db.Decimal(18, 2)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "platform_commission_logs_order_id_fkey")
+
+  @@map("platform_commission_logs")
+}

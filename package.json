@@ -1,0 +1,29 @@
+{
+  "name": "saas-distribution-data-model",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:validate": "prisma validate",
+    "db:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "start": "node --import tsx src/server.ts",
+    "start:agent": "node --import tsx src/server.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5",
+    "@types/node": "^26.0.0",
+    "prisma": "^7.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.0.0",
+    "@prisma/adapter-pg": "^7.0.0",
+    "@fastify/jwt": "^9.0.0",
+    "decimal.js": "^10.6.0",
+    "fastify": "^5.0.0",
+    "pg": "^8.13.0"
+  }
+}

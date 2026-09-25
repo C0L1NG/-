@@ -1,0 +1,8 @@
+{
+  "description": "二级分销代理商微信小程序",
+  "miniprogramRoot": "./",
+  "compileType": "miniprogram",
+  "appid": "touristappid",
+  "projectname": "agent-mini-program",
+  "setting": { "es6": true, "minified": true, "urlCheck": true }
+}

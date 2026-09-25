@@ -1,0 +1,27 @@
+.agent-dark {
+  --agent-bg: #0d140c;
+  --agent-surface: #141c13;
+  --agent-surface-raised: #1a2518;
+  --agent-soft: #253022;
+  --agent-text: #f4f5f0;
+  --agent-muted: #8e9b8a;
+  --agent-line: rgba(255, 255, 255, .08);
+  --agent-nav: rgba(13, 20, 12, .82);
+  --agent-hero-from: #162613;
+  --agent-hero-to: #121e10;
+  --agent-accent-text: #9fe870;
+}
+
+.agent-light {
+  --agent-bg: #f4f6ef;
+  --agent-surface: #fff;
+  --agent-surface-raised: #f8faf5;
+  --agent-soft: #e8eee2;
+  --agent-text: #132a00;
+  --agent-muted: #72806d;
+  --agent-line: rgba(19, 42, 0, .09);
+  --agent-nav: rgba(244, 246, 239, .84);
+  --agent-hero-from: #e1efd8;
+  --agent-hero-to: #d9ebcc;
+  --agent-accent-text: #286c29;
+}

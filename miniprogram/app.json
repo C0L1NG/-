@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/referral/index",
+    "pages/team/index",
+    "pages/ledger/index"
+  ],
+  "window": { "navigationBarTitleText": "代理工作台", "navigationBarBackgroundColor": "#F6F7F2", "navigationBarTextStyle": "black", "backgroundColor": "#F6F7F2" },
+  "tabBar": {
+    "color": "#879182", "selectedColor": "#132A00", "backgroundColor": "#F6F7F2", "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/referral/index", "text": "推广" },
+      { "pagePath": "pages/team/index", "text": "团队" },
+      { "pagePath": "pages/ledger/index", "text": "明细" }
+    ]
+  },
+  "style": "v2", "sitemapLocation": "sitemap.json"
+}

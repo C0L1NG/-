@@ -1,0 +1,8 @@
+packages:
+  - '.'
+  - 'web'
+
+allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true

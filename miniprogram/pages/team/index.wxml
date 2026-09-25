@@ -1,0 +1,2 @@
+<view class="page"><view style="font-size:44rpx;font-weight:600;margin-bottom:28rpx">直属团队</view>
+<block wx:for="{{items}}" wx:key="id"><view class="card" style="display:flex;justify-content:space-between;align-items:center"><view><view>{{item.displayName}}</view><view class="label" style="margin-top:10rpx">加入 {{item.joinedDate}}</view></view><view style="text-align:right"><view class="mono">+¥ {{item.contributionCommission}}</view><view class="label">贡献佣金</view></view></view></block><view wx:if="{{!items.length}}" class="empty">暂无直属下级</view></view>
