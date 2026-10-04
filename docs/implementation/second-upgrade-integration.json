@@ -1,0 +1,14 @@
+{
+  "gateway": "real Next -> FastAPI -> PostgreSQL",
+  "firstBrowser": {
+    "failedLogins": 20,
+    "nextStatus": 429
+  },
+  "secondBrowser": {
+    "loginStatus": 200,
+    "overviewStatus": 200
+  },
+  "tokenInBrowserJson": false,
+  "httpOnlyCookie": true,
+  "recoveryWorkerFirstCycle": true
+}

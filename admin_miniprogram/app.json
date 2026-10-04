@@ -1,0 +1,37 @@
+{
+  "pages": [
+    "pages/dashboard/index",
+    "pages/team/index",
+    "pages/audit/index",
+    "pages/login/index",
+    "pages/web/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "平台主管",
+    "navigationBarBackgroundColor": "#0A0A0A",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0A0A0A"
+  },
+  "tabBar": {
+    "color": "#949494",
+    "selectedColor": "#F5F5F5",
+    "backgroundColor": "#0A0A0A",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/dashboard/index",
+        "text": "大盘"
+      },
+      {
+        "pagePath": "pages/team/index",
+        "text": "团队"
+      },
+      {
+        "pagePath": "pages/audit/index",
+        "text": "审计"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

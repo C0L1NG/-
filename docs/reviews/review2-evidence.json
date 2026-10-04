@@ -1,0 +1,85 @@
+{
+  "shared_gateway_login_limit": {
+    "prior_invalid_requests": 20,
+    "different_end_user_valid_login": 429,
+    "body": {
+      "code": "RATE_LIMITED",
+      "message": "Please try again later"
+    }
+  },
+  "failed_payment_recovery": {
+    "processing_error": "ValueError",
+    "stored_payment_status": "pending",
+    "durable_events": 0,
+    "recoverable_by_retry_settlements": 0
+  },
+  "refund_before_payout_start": {
+    "status_after_refund_then_start": "processing",
+    "frozen": "70.00",
+    "debt": "70.00",
+    "earned": "0.00"
+  },
+  "reconciliation_status_gap": {
+    "injected_fault": "paid withdrawal without frozen debit",
+    "reconcile_findings": []
+  },
+  "concurrent_overview": {
+    "platformTotalRevenue": "0.00",
+    "totalGmv": "250.00",
+    "agentCommissionPool": "70.00",
+    "agentCount": 1,
+    "paidOrderCount": 1
+  },
+  "manual_payout_claim": {
+    "start_results": [
+      "processing",
+      "processing"
+    ],
+    "final_reviewer_is_b": true
+  },
+  "refund_aggregation_plan": {
+    "Node Type": "Aggregate",
+    "Strategy": "Plain",
+    "Partial Mode": "Simple",
+    "Parallel Aware": false,
+    "Async Capable": false,
+    "Startup Cost": 1863.05,
+    "Total Cost": 1863.06,
+    "Plan Rows": 1,
+    "Plan Width": 32,
+    "Actual Startup Time": 2.188,
+    "Actual Total Time": 2.188,
+    "Actual Rows": 1,
+    "Actual Loops": 1,
+    "Plans": [
+      {
+        "Node Type": "Seq Scan",
+        "Parent Relationship": "Outer",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Relation Name": "wallet_movements",
+        "Alias": "wallet_movements",
+        "Startup Cost": 0.0,
+        "Total Cost": 1863.04,
+        "Plan Rows": 1,
+        "Plan Width": 3,
+        "Actual Startup Time": 2.185,
+        "Actual Total Time": 2.185,
+        "Actual Rows": 1,
+        "Actual Loops": 1,
+        "Filter": "((user_id = '1607f0d1-1741-430e-9d40-e501443ed37a'::uuid) AND ((kind)::text = 'refund'::text) AND (created_at >= CURRENT_DATE))",
+        "Rows Removed by Filter": 50001
+      }
+    ]
+  },
+  "rejection_reason_collision": {
+    "first_status": "rejected",
+    "second_error": "IntegrityError",
+    "second_status": "pending",
+    "remaining_frozen": "10.00"
+  },
+  "negative_csv_cell": {
+    "cell": "'-30.00",
+    "numeric_without_cleanup": false
+  }
+}

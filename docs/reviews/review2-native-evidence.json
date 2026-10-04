@@ -1,0 +1,15 @@
+{
+  "adminLogoutRace": {
+    "clearedAfterLogout": true,
+    "renewalsAfterLogout": 1,
+    "tokenRestored": true,
+    "protectedRequestSucceeded": true
+  },
+  "agentLogoutDuringRenewal": {
+    "clearedAfterLogout": true,
+    "uiLoggedOut": true,
+    "authenticatedFlag": false,
+    "tokenRestored": true,
+    "protectedRequestSucceeded": true
+  }
+}
