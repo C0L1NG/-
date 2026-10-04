@@ -1,1 +1,5 @@
-{ "navigationStyle": "custom", "enablePullDownRefresh": true, "backgroundColor": "#F6F7F2" }
+{
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#F6F7F2"
+}

@@ -5,9 +5,12 @@ from decimal import Decimal
 
 
 def iso_utc(value: datetime) -> str:
-    return (value.replace(tzinfo=value.tzinfo or timezone.utc)
-        .astimezone(timezone.utc).isoformat(timespec="milliseconds")
-        .replace("+00:00", "Z"))
+    return (
+        value.replace(tzinfo=value.tzinfo or timezone.utc)
+        .astimezone(timezone.utc)
+        .isoformat(timespec="milliseconds")
+        .replace("+00:00", "Z")
+    )
 
 
 def percent(value: Decimal) -> int | float:

@@ -8,5 +8,9 @@ python_backend/.venv/
 **/__pycache__/
 **/.pytest_cache/
 .DS_Store
-# The public Sites project has its own Git repository and deployment history.
+# The local published checkout is reproduced from showcase-template and shared UI.
 showcase-site/
+
+python_backend/.env
+web/.env.local
+**/.ruff_cache/

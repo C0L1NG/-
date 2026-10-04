@@ -7,15 +7,20 @@ from .security import current_admin_id, current_agent_id
 
 ALLOWED_QUERY: dict[str, set[str]] = {
     "/api/agent/overview": set(),
+    "/api/agent/progress": set(),
     "/api/agent/logout": set(),
     "/api/agent/referral": set(),
-    "/api/agent/team": {"page", "pageSize"},
+    "/api/agent/team": {"page", "pageSize", "q"},
     "/api/agent/bind-parent": set(),
     "/api/agent/mini-program-code": set(),
+    "/api/agent/activity": {"page", "pageSize", "from", "to", "roleType"},
+    "/api/agent/activity-summary": {"from", "to", "roleType"},
     "/api/agent/ledger": {"page", "pageSize", "from", "to", "roleType"},
     "/api/admin/overview": {"period"},
     "/api/admin/team-tree": {"period"},
-    "/api/admin/commission-audit": {"page", "pageSize", "period", "q"},
+    "/api/admin/team-network": {"period", "parentId", "page", "pageSize", "q"},
+    "/api/admin/commission-export": {"period", "q", "from", "to"},
+    "/api/admin/commission-audit": {"page", "pageSize", "period", "q", "from", "to"},
     "/api/auth/wechat/login": set(),
 }
 

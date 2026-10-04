@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 import httpx
 
+from .errors import APIError
+
 
 @dataclass(frozen=True)
 class WechatSession:
@@ -23,33 +25,49 @@ class WechatClient:
         await self.http.aclose()
 
     async def code2session(self, code: str) -> WechatSession:
-        response = await self.http.get("https://api.weixin.qq.com/sns/jscode2session", params={
-            "appid": self.app_id, "secret": self.app_secret, "js_code": code,
-            "grant_type": "authorization_code"})
+        response = await self.http.get(
+            "https://api.weixin.qq.com/sns/jscode2session",
+            params={
+                "appid": self.app_id,
+                "secret": self.app_secret,
+                "js_code": code,
+                "grant_type": "authorization_code",
+            },
+        )
         body = response.json()
         if not response.is_success or body.get("errcode") or not body.get("openid"):
-            raise RuntimeError("WeChat login failed")
+            raise APIError(401, "WECHAT_LOGIN_REJECTED", "WeChat login code is invalid or expired")
         return WechatSession(body["openid"], body.get("unionid"))
 
     async def _access_token(self) -> str:
         async with self._lock:
             if self._token and self._token[1] > time.monotonic() + 60:
                 return self._token[0]
-            response = await self.http.get("https://api.weixin.qq.com/cgi-bin/token", params={
-                "grant_type": "client_credential", "appid": self.app_id, "secret": self.app_secret})
+            response = await self.http.get(
+                "https://api.weixin.qq.com/cgi-bin/token",
+                params={
+                    "grant_type": "client_credential",
+                    "appid": self.app_id,
+                    "secret": self.app_secret,
+                },
+            )
             body = response.json()
             if not response.is_success or body.get("errcode") or not body.get("access_token"):
-                raise RuntimeError("WeChat token failed")
+                raise APIError(
+                    502, "WECHAT_TOKEN_UNAVAILABLE", "WeChat service is temporarily unavailable"
+                )
             self._token = (body["access_token"], time.monotonic() + body.get("expires_in", 7200))
             return self._token[0]
 
     async def get_unlimited_code(self, scene: str, page: str) -> tuple[bytes, str]:
-        response = await self.http.post("https://api.weixin.qq.com/wxa/getwxacodeunlimit",
+        response = await self.http.post(
+            "https://api.weixin.qq.com/wxa/getwxacodeunlimit",
             params={"access_token": await self._access_token()},
-            json={"scene": scene, "page": page, "width": 430, "check_path": True})
+            json={"scene": scene, "page": page, "width": 430, "check_path": True},
+        )
         content_type = response.headers.get("content-type", "application/octet-stream")
         if not response.is_success or "json" in content_type:
-            raise RuntimeError("WeChat code generation failed")
+            raise APIError(502, "WECHAT_CODE_UNAVAILABLE", "WeChat code generation failed")
         return response.content, content_type
 
 

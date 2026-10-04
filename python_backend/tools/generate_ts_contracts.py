@@ -7,6 +7,8 @@ import argparse
 import json
 import sys
 import types
+import uuid
+from decimal import Decimal
 from pathlib import Path
 from typing import Literal, Union, get_args, get_origin
 
@@ -16,15 +18,72 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "python_backend"))
 
 from app import schemas  # noqa: E402
+from app.payments import PaymentNotice  # noqa: E402
+from app.routers.agent import BindBody, WechatLoginBody  # noqa: E402
+from app.routers.auth import AdminWechatBody, ExchangeBody, LoginBody  # noqa: E402
+from app.routers.finance import (  # noqa: E402
+    AccountBody,
+    OrderBody,
+    ReviewBody,
+    VerificationBody,
+    WithdrawalBody,
+)
 
 MODELS = (
-    schemas.AgentOverview, schemas.Referral, schemas.TeamMember,
-    schemas.TeamPage, schemas.LedgerItem, schemas.LedgerPage,
-    schemas.ParentBinding, schemas.MiniProgramCode, schemas.WechatAgent,
-    schemas.WechatLogin, schemas.AdminOverview, schemas.AgentNode,
-    schemas.TreeRoot, schemas.TeamTree, schemas.AgentDetail,
-    schemas.Person, schemas.PlatformSplit, schemas.AgentSplit,
-    schemas.AuditItem, schemas.AuditPage,
+    schemas.AgentOverview,
+    schemas.Referral,
+    schemas.TeamMember,
+    schemas.TeamPage,
+    schemas.AgentActivityItem,
+    schemas.AgentActivityPage,
+    schemas.AgentActivitySummary,
+    schemas.LedgerItem,
+    schemas.LedgerPage,
+    schemas.ParentBinding,
+    schemas.MiniProgramCode,
+    schemas.WechatAgent,
+    schemas.WechatLogin,
+    schemas.AdminOverview,
+    schemas.AgentNode,
+    schemas.TreeRoot,
+    schemas.TeamTree,
+    schemas.AgentDetail,
+    schemas.Person,
+    schemas.PlatformSplit,
+    schemas.AgentSplit,
+    schemas.AuditItem,
+    schemas.AuditPage,
+    schemas.AgentProgress,
+    schemas.NetworkNode,
+    schemas.NetworkPage,
+    schemas.WalletState,
+    schemas.OperationsSummary,
+    schemas.PayoutAccountData,
+    schemas.WithdrawalData,
+    schemas.PayoutAccountPage,
+    schemas.WithdrawalPage,
+    schemas.WithdrawalActionData,
+    schemas.PayoutDetails,
+    schemas.SessionLogin,
+    schemas.LoginTicket,
+    schemas.OrderCreated,
+    schemas.CommissionResult,
+    schemas.PaymentInboxData,
+    schemas.PaymentInboxPage,
+    schemas.PendingAccount,
+    schemas.PendingAccountPage,
+    schemas.APIErrorBody,
+    OrderBody,
+    AccountBody,
+    WithdrawalBody,
+    ReviewBody,
+    VerificationBody,
+    LoginBody,
+    ExchangeBody,
+    AdminWechatBody,
+    BindBody,
+    WechatLoginBody,
+    PaymentNotice,
 )
 TARGET = ROOT / "web/lib/api-contract.generated.ts"
 
@@ -40,6 +99,10 @@ def ts_type(annotation: object) -> str:
         return " | ".join(json.dumps(item, ensure_ascii=False) for item in get_args(annotation))
     if annotation is type(None):
         return "null"
+    if annotation is uuid.UUID:
+        return "string"
+    if annotation is Decimal:
+        return "string | number"
     if annotation is str:
         return "string"
     if annotation in (int, float):
@@ -53,7 +116,7 @@ def ts_type(annotation: object) -> str:
 
 def render() -> str:
     lines = [
-        "// Generated from python_backend/app/schemas.py. Do not edit by hand.",
+        "// Generated from the backend Pydantic response and request models. Do not edit by hand.",
         "// Run: python python_backend/tools/generate_ts_contracts.py",
         "",
     ]

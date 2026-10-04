@@ -6,7 +6,9 @@ export const metadata: Metadata = {
   description: "二级分销平台全局资金、团队关系与分润审计",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
       <body>{children}</body>

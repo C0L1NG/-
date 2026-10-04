@@ -1,88 +1,558 @@
 "use client";
-
 import Link from "next/link";
-import { Activity, ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Command, Crown,
-  Layers3, Network, Search, Sparkles, TrendingDown, TrendingUp, UsersRound, WalletCards, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  ArrowUpRight,
+  Download,
+  LayoutGrid,
+  Network,
+  ReceiptText,
+  Wallet,
+  Search,
+  LogOut,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 import { adminGet } from "@/lib/admin-api";
-import { demoAdminOverview, demoAdminOverviewMonth, demoAdminOverviewPreviousMonth,
-  demoAuditItems, demoTeamTree, demoTeamTreeMonth } from "@/lib/admin-demo-data";
-import type { AdminOverview, AgentNode, AuditPage, TeamTree } from "@/lib/admin-types";
-import { AuditFlowCard, Skeleton, cents, findAgent, money, surface, teamGmv, teamPlatform } from "./admin-dark-ui";
+import {
+  demoAdminOverview,
+  demoAdminOverviewMonth,
+} from "@/lib/admin-demo-data";
+import type { AdminOverview, AuditPage } from "@/lib/admin-types";
+import { Skeleton } from "./admin-dark-ui";
+import { AdminNetwork } from "./admin-network";
+import { AdminTreasury } from "./admin-treasury";
+import { AdminAuditTable } from "./admin-audit-table";
+import { exportAdminAudit } from "@/lib/admin-export";
+import { filteredDemoAudit } from "@/lib/admin-filters";
+import { displayAmount } from "@/lib/money";
+import { AdminOperations, type TreasuryFocus } from "./admin-operations";
+import { WalletSummary } from "./wallet-summary";
+import { RefreshStatus, useLiveRefresh } from "./live-refresh";
+import { DateFilter } from "./date-filter";
+import type { DateBounds } from "@/lib/date-range";
 
-type Period = "all" | "month";
-const PAGE_SIZE = 5;
-function demoAudit(period: Period, page: number, query: string): AuditPage {
-  const q = query.toLocaleLowerCase();
-  const source = demoAuditItems.filter((item) => (period === "all" || item.createdAt.startsWith("2026-09")) &&
-    (!q || item.orderNo.toLocaleLowerCase().includes(q) || item.promoter.displayName.toLocaleLowerCase().includes(q)));
-  return { page, pageSize: PAGE_SIZE, total: source.length, totalPages: Math.ceil(source.length / PAGE_SIZE),
-    items: source.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) };
-}
-function matches(node: AgentNode, query: string) {
-  const q = query.toLocaleLowerCase();
-  return node.displayName.toLocaleLowerCase().includes(q) || (node.referralCode ?? "").toLocaleLowerCase().includes(q);
-}
-function Metric({ label, value, detail, icon: Icon, loading }: { label: string; value: string; detail: string; icon: typeof Activity; loading: boolean }) {
-  return <article className={surface + " flex min-h-[236px] flex-col p-6 transition-colors hover:bg-[#182217]"}>
-    <div className="flex items-start justify-between gap-2"><span className="text-[11px] font-medium text-[#8E9B8A]">{label}</span><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.05] text-[#A9CB9C]"><Icon size={18} strokeWidth={1.5} /></span></div>
-    <div className="mt-auto">{loading ? <Skeleton className="h-9 w-[88%]" /> : <p className="overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[clamp(19px,1.7vw,27px)] font-bold tracking-[-0.075em] text-[#F4F5F0]">{value}</p>}<p className="mt-3 text-[10px] leading-5 text-[#6F806C]">{detail}</p></div>
-  </article>;
-}
-function TeamRoot({ node, open, activeId, onToggle, onSelect, query, period }: { node: AgentNode; open: boolean; activeId: string | null; onToggle: () => void; onSelect: (id: string) => void; query: string; period: Period }) {
-  const visibleChildren = query && !matches(node, query) ? node.children.filter((child) => matches(child, query)) : node.children;
-  const mentor = node.children.reduce((sum, child) => sum + cents(child.mentorPaidUp), 0);
-  return <div className={surface + " overflow-hidden transition-colors hover:bg-[#182217]"}>
-    <div className="flex items-center gap-4 p-5"><button type="button" onClick={() => onSelect(node.id)} className="flex min-w-[174px] flex-[1.3] items-center gap-3 rounded-xl text-left focus-visible:outline-2 focus-visible:outline-[#9FE870]"><span className={"flex h-12 w-12 shrink-0 items-center justify-center rounded-[17px] text-[12px] font-extrabold " + (activeId === node.id ? "bg-[#9FE870] text-[#0A1408]" : "border border-white/[0.08] bg-[#263623] text-[#B5DB9F]")}>{node.displayName.slice(0, 2)}</span><span className="min-w-0"><span className="block truncate text-[13px] font-bold text-[#F4F5F0]">{node.displayName}</span><span className="mt-1 block truncate font-mono text-[10px] text-[#748570]">{node.referralCode} · 一级代理</span></span></button><div className="min-w-[110px] flex-1"><p className="text-[10px] text-[#788875]">{period === "month" ? "本月团队 GMV" : "团队成交 GMV"}</p><p className="mt-1.5 truncate font-mono text-[13px] font-semibold text-[#DDE9D7]">¥{money(teamGmv(node))}</p></div><div className="min-w-[80px] flex-[.55]"><p className="text-[10px] text-[#788875]">直属下线</p><p className="mt-1.5 font-mono text-[13px] font-semibold text-[#DDE9D7]">{node.teamSize} 人</p></div><div className="min-w-[123px] flex-1"><p className="text-[10px] text-[#788875]">平台 30% 贡献</p><p className="mt-1.5 truncate font-mono text-[13px] font-semibold text-[#9FE870]">¥{money(teamPlatform(node))}</p></div><button type="button" onClick={onToggle} disabled={!node.children.length} aria-expanded={open} aria-label={(open ? "收起" : "展开") + node.displayName + "团队"} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] text-[#B5C9AA] disabled:opacity-30"><ChevronDown size={17} className={open ? "rotate-180 transition-transform" : "transition-transform"} /></button></div>
-    {open && visibleChildren.length > 0 && <div className="border-t border-white/[0.06] px-5 pb-5 pt-4"><p className="mb-4 pl-3 text-[10px] text-[#7F9279]">二级直属团队 <span className="mx-1 text-[#496045]">/</span> 利润池 21% 向直属导师分润</p><div className="ml-6 space-y-2.5 border-l border-[#385333] pl-4">{visibleChildren.map((child) => <button key={child.id} type="button" onClick={() => onSelect(child.id)} className={"relative flex w-full items-center gap-3 rounded-[17px] border px-4 py-3.5 text-left transition-colors " + (activeId === child.id ? "border-[#9FE870]/25 bg-[#21351B]" : "border-white/[0.05] bg-[#101810] hover:bg-[#1B2918]")}><span aria-hidden="true" className="absolute -left-4 top-1/2 h-px w-4 bg-[#385333]" /><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#253421] text-[10px] font-bold text-[#C6EAB0]">{child.displayName.slice(0, 2)}</span><span className="min-w-0 flex-1"><span className="block truncate text-[12px] font-bold text-[#F4F5F0]">{child.displayName} <span className="font-mono text-[9px] font-normal text-[#70816D]">#{child.referralCode}</span></span><span className="mt-1 block truncate text-[10px] text-[#7C8E77]">{child.ownOrderCount} 笔出单 · GMV ¥{child.ownGmv}</span></span><span className="shrink-0 text-right"><span className="block text-[9px] text-[#748771]">导师 21%</span><span className="mt-1 block font-mono text-[12px] font-bold text-[#9FE870]">+¥{child.mentorPaidUp}</span></span></button>)}</div><p className="mt-4 text-right text-[10px] text-[#80927A]">累计导师分润 <span className="ml-1 font-mono font-bold text-[#9FE870]">¥{money(mentor)}</span></p></div>}
-  </div>;
-}
-function Inspector({ selected, parent }: { selected: AgentNode | null; parent: AgentNode | null }) {
-  const received = selected?.children.reduce((sum, child) => sum + cents(child.mentorPaidUp), 0) ?? 0;
-  return <aside className="sticky top-[118px] self-start rounded-[28px] border border-[#9FE870]/12 bg-[#1A2917] p-6"><div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8EA887]">Agent focus</span><Sparkles size={17} className="text-[#9FE870]" /></div>{selected ? <><div className="mt-7 flex items-center gap-3"><span className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-[#9FE870] text-[15px] font-extrabold text-[#0A1408]">{selected.displayName.slice(0, 2)}</span><div><h3 className="text-[21px] font-bold tracking-[-0.05em] text-[#F4F5F0]">{selected.displayName}</h3><p className="mt-1 text-[10px] text-[#8A9D84]">{parent ? "二级代理 · 导师 " + parent.displayName : "一级代理 · 平台直属"}</p></div></div><p className="mt-5 inline-flex rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 font-mono text-[10px] text-[#BAD7AD]">{selected.referralCode}</p><div className="mt-7 rounded-[20px] border border-white/[0.06] bg-[#111B10] p-5"><p className="text-[11px] text-[#84977C]">钱包可用余额</p><p className="mt-3 font-mono text-[29px] font-bold tracking-[-0.075em] text-[#F4F5F0]">¥{selected.balance}</p></div><div className="mt-5 grid grid-cols-2 gap-4">{[["自身成交 GMV", selected.ownGmv], ["历史总收益", selected.totalEarned], ["直属团队", selected.teamSize + " 人"], ["平台贡献", selected.platformContribution]].map(([label, value]) => <div key={label}><p className="text-[10px] text-[#82947B]">{label}</p><p className="mt-2 truncate font-mono text-[13px] font-semibold text-[#EDF4E9]">{label === "直属团队" ? value : "¥" + value}</p></div>)}</div><div className="mt-7 flex items-center justify-between gap-2 rounded-2xl bg-[#9FE870]/10 px-4 py-3 text-[10px] text-[#BADCA7]"><span>{parent ? "向直属导师流转 21%" : "直属团队导师分润"}</span><span className="font-mono font-bold text-[#9FE870]">¥{parent ? selected.mentorPaidUp : money(received)}</span></div></> : <p className="mt-8 text-[12px] leading-6 text-[#8EA887]">选择代理，查看团队与钱包数据。</p>}</aside>;
-}
-
+type Workspace = "overview" | "network" | "audit" | "treasury";
+const sections = [
+  { id: "overview", label: "资金总览", Icon: LayoutGrid },
+  { id: "network", label: "代理网络", Icon: Network },
+  { id: "audit", label: "分账审计", Icon: ReceiptText },
+  { id: "treasury", label: "资金管理", Icon: Wallet },
+] as const;
+const PAGE_SIZE = 8;
 export function AdminDashboard({ demo = false }: { demo?: boolean }) {
-  const [period, setPeriod] = useState<Period>("all"), [query, setQuery] = useState(""), [search, setSearch] = useState("");
-  const [page, setPage] = useState(1), [revision, setRevision] = useState(0);
-  const [overview, setOverview] = useState<AdminOverview | null>(demo ? demoAdminOverview : null);
-  const [month, setMonth] = useState<AdminOverview | null>(demo ? demoAdminOverviewMonth : null);
-  const [previousMonth, setPreviousMonth] = useState<AdminOverview | null>(demo ? demoAdminOverviewPreviousMonth : null);
-  const [tree, setTree] = useState<TeamTree | null>(demo ? demoTeamTree : null);
-  const [audit, setAudit] = useState<AuditPage | null>(demo ? demoAudit("all", 1, "") : null);
-  const [selectedId, setSelectedId] = useState<string | null>(demo ? demoTeamTree.root.children[0]?.id ?? null : null);
-  const [openRoots, setOpenRoots] = useState<Set<string>>(new Set(demo ? [demoTeamTree.root.children[0]?.id ?? ""] : []));
-  const [loadingOverview, setLoadingOverview] = useState(!demo), [loadingTree, setLoadingTree] = useState(!demo), [loadingAudit, setLoadingAudit] = useState(!demo);
-  const [error, setError] = useState(""); const searchRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { const timer = window.setTimeout(() => { setSearch(query.trim()); setPage(1); }, 260); return () => window.clearTimeout(timer); }, [query]);
-  useEffect(() => { const onKey = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); searchRef.current?.focus(); } if (event.key === "Escape" && document.activeElement === searchRef.current) { setQuery(""); searchRef.current?.blur(); } }; window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, []);
-  useEffect(() => { if (demo) return; const timer = window.setInterval(() => setRevision((old) => old + 1), 60_000); return () => window.clearInterval(timer); }, [demo]);
+  const [view, setView] = useState<Workspace>("overview");
+  const [period, setPeriod] = useState<"all" | "month">("all");
+  const [bounds, setBounds] = useState<DateBounds>({});
+  const [overview, setOverview] = useState<AdminOverview | null>(
+    demo ? demoAdminOverview : null,
+  );
+  const [audit, setAudit] = useState<AuditPage | null>(null);
+  const [page, setPage] = useState(1),
+    [query, setQuery] = useState(""),
+    [search, setSearch] = useState("");
+  const { revision, refresh: retry } = useLiveRefresh(!demo);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null),
+    [auditAt, setAuditAt] = useState<string | null>(null);
+  const [treasuryFocus, setTreasuryFocus] = useState<TreasuryFocus>();
+  const [exporting, setExporting] = useState(false),
+    [message, setMessage] = useState("");
+  const [overviewLoading, setOverviewLoading] = useState(!demo),
+    [auditLoading, setAuditLoading] = useState(!demo);
+  const [overviewError, setOverviewError] = useState(""),
+    [auditError, setAuditError] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
+  const [twoLevel, setTwoLevel] = useState(true);
+  const auditFilters =
+    view === "audit" ? { q: search, ...bounds } : { period, q: search };
   useEffect(() => {
-    if (demo) { setOverview(period === "month" ? demoAdminOverviewMonth : demoAdminOverview); setTree(period === "month" ? demoTeamTreeMonth : demoTeamTree); return; }
-    const controller = new AbortController(); setLoadingOverview(true); setLoadingTree(true);
-    adminGet<AdminOverview>("/api/admin/overview?period=" + period, controller.signal).then(setOverview).catch(() => { if (!controller.signal.aborted) setError("资金数据暂时不可用，请检查管理员会话。"); }).finally(() => { if (!controller.signal.aborted) setLoadingOverview(false); });
-    adminGet<TeamTree>("/api/admin/team-tree?period=" + period, controller.signal).then((result) => { setTree(result); setSelectedId((old) => old && findAgent(result.root.children, old) ? old : result.root.children[0]?.id ?? null); }).catch(() => { if (!controller.signal.aborted) setError("团队数据暂时不可用，请检查管理员会话。"); }).finally(() => { if (!controller.signal.aborted) setLoadingTree(false); });
+    const timer = setTimeout(() => {
+      setSearch(query.trim());
+      setPage(1);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query]);
+  useEffect(() => {
+    setPage(1);
+  }, [period, bounds, revision]);
+  useEffect(() => {
+    if (demo) {
+      setOverview(
+        period === "month" ? demoAdminOverviewMonth : demoAdminOverview,
+      );
+      return;
+    }
+    const controller = new AbortController();
+    setOverviewLoading(true);
+    setOverviewError("");
+    adminGet<AdminOverview>(
+      `/api/admin/overview?period=${period}`,
+      controller.signal,
+    )
+      .then((value) => {
+        if (!controller.signal.aborted) {
+          setOverview(value);
+          setUpdatedAt(new Date().toISOString());
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setOverviewError("资金数据暂时不可用");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setOverviewLoading(false);
+      });
     return () => controller.abort();
   }, [demo, period, revision]);
-  useEffect(() => { if (demo) return; const controller = new AbortController(); Promise.all([adminGet<AdminOverview>("/api/admin/overview?period=month", controller.signal), adminGet<AdminOverview>("/api/admin/overview?period=previous_month", controller.signal)]).then(([current, previous]) => { setMonth(current); setPreviousMonth(previous); }).catch(() => {}); return () => controller.abort(); }, [demo, revision]);
-  useEffect(() => { if (demo) { setAudit(demoAudit(period, page, search)); return; } const controller = new AbortController(); setLoadingAudit(true); const params = new URLSearchParams({ period, page: String(page), pageSize: String(PAGE_SIZE) }); if (search) params.set("q", search); adminGet<AuditPage>("/api/admin/commission-audit?" + params, controller.signal).then(setAudit).catch(() => { if (!controller.signal.aborted) setError("审计流水暂时不可用，请检查管理员会话。"); }).finally(() => { if (!controller.signal.aborted) setLoadingAudit(false); }); return () => controller.abort(); }, [demo, period, page, search, revision]);
-  const roots = tree?.root.children ?? [];
-  const visibleRoots = useMemo(() => roots.filter((node) => !search || matches(node, search) || node.children.some((child) => matches(child, search))), [roots, search]);
-  const selected = selectedId ? findAgent(roots, selectedId) : null;
-  const parent = selected ? roots.find((node) => node.children.some((child) => child.id === selected.id)) ?? null : null;
-  const previous = cents(previousMonth?.platformTotalRevenue ?? "0");
-  const trend = previous ? Math.round(((cents(month?.platformTotalRevenue ?? "0") / previous) - 1) * 1000) / 10 : null;
-  const ready = Boolean(overview && tree && audit) && !error;
-  function changePeriod(next: Period) { setPeriod(next); setPage(1); setError(""); }
-  function toggleRoot(id: string) { setOpenRoots((old) => { const next = new Set(old); if (next.has(id)) next.delete(id); else next.add(id); return next; }); }
-
-  return <div className="min-h-screen bg-[#0B0F0B] font-sans text-[#F4F5F0] antialiased"><div className="mx-auto max-w-[1600px] px-6 pb-20 pt-6 xl:px-9 2xl:px-12">
-    <header className="sticky top-5 z-30 flex min-h-[72px] items-center justify-between gap-5 rounded-full border border-white/[0.08] bg-[#0D140C]/80 px-5 shadow-[0_18px_55px_-25px_rgba(0,0,0,.7)] backdrop-blur-md xl:px-7"><div className="flex shrink-0 items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#9FE870]/15 bg-[#1C3019] text-[#9FE870]"><Layers3 size={19} strokeWidth={1.7} /></span><span><span className="block text-[11px] font-extrabold tracking-[0.13em]">PLATFORM CONSOLE</span><span className="mt-1 flex items-center gap-1.5 text-[10px] text-[#8E9B8A]"><span className={"h-1.5 w-1.5 rounded-full " + (ready ? "animate-pulse bg-[#9FE870]" : "bg-[#70816D]")} />{ready ? "系统运行正常" : error ? "部分数据待重试" : "正在连接"}</span></span></div><div className="flex min-w-0 items-center gap-3"><label className="hidden h-10 w-[260px] items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.04] px-4 text-[#81917D] lg:flex"><Search size={15} /><input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} maxLength={80} aria-label="搜索订单或代理" placeholder="搜索订单或代理" className="min-w-0 flex-1 bg-transparent text-[12px] text-[#F4F5F0] outline-none placeholder:text-[#71806D]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="清空搜索"><X size={14} /></button> : <kbd className="flex items-center gap-0.5 rounded-md border border-white/[0.06] px-1.5 py-1 font-mono text-[10px]"><Command size={10} />K</kbd>}</label><div role="group" aria-label="统计周期" className="flex h-10 items-center rounded-full border border-white/[0.06] bg-white/[0.04] p-1"><button type="button" aria-pressed={period === "month"} onClick={() => changePeriod("month")} className={"h-8 rounded-full px-3.5 text-[11px] font-bold " + (period === "month" ? "bg-[#9FE870] text-[#0A1408]" : "text-[#8E9B8A]")}>本月</button><button type="button" aria-pressed={period === "all"} onClick={() => changePeriod("all")} className={"h-8 rounded-full px-3.5 text-[11px] font-bold " + (period === "all" ? "bg-[#9FE870] text-[#0A1408]" : "text-[#8E9B8A]")}>全周期</button></div><Link href="/admin/mobile/" className="hidden h-10 items-center rounded-full border border-white/[0.08] px-4 text-[11px] font-semibold text-[#B8CBB0] hover:border-[#9FE870]/30 xl:flex">移动总控 <ArrowUpRight size={13} className="ml-1" /></Link><span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#9FE870]/15 bg-[#263A21] text-[12px] font-bold text-[#C6E9B2]">老板</span></div></header>
-    <main className="pt-11"><div className="mb-9 flex items-end justify-between gap-5"><div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#9FE870]">Capital intelligence</p><h1 className="mt-3 text-[38px] font-extrabold tracking-[-0.07em] xl:text-[44px]">让每一笔资金，都有迹可循<span className="text-[#9FE870]">.</span></h1><p className="mt-3 text-[12px] text-[#8E9B8A]">全网成交、二级代理与三方分润，在同一视野里清晰展开。</p></div><span className="rounded-full border border-white/[0.08] bg-[#141C13] px-3 py-2 text-[10px] text-[#9DAC98]">{demo ? "公开演示 · 虚构数据" : "仅超级管理员可查看"} · {period === "month" ? "本月 UTC" : "全周期"}</span></div>
-      {error && <button type="button" onClick={() => { setError(""); setRevision((old) => old + 1); }} role="alert" className={surface + " mb-6 flex w-full justify-between px-5 py-4 text-left text-[12px] text-[#C9D6C3]"}><span>{error}</span><span className="text-[#9FE870]">点击重试 →</span></button>}
-      <section aria-label="全盘资金中枢" className="grid gap-5 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"><article className="relative flex min-h-[255px] flex-col overflow-hidden rounded-[30px] border border-[#9FE870]/12 bg-gradient-to-br from-[#162613] to-[#121E10] p-8 shadow-[0_22px_60px_-30px_rgba(0,0,0,.8)]"><span aria-hidden="true" className="absolute -right-12 -top-24 h-72 w-72 rounded-full border border-white/[0.06]" /><span aria-hidden="true" className="absolute right-7 top-3 h-40 w-40 rounded-full border border-white/[0.04]" /><div className="relative flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[#E2EBDD]">平台累计净收益</p><p className="mt-2 text-[10px] text-[#93A98B]">订单利润池固定留存 30%</p></div><span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.06] text-[#9FE870]"><Crown size={20} strokeWidth={1.5} /></span></div><div className="relative mt-auto">{loadingOverview ? <Skeleton className="h-12 w-3/4" /> : <p className="whitespace-nowrap font-mono text-[clamp(32px,3vw,48px)] font-bold tracking-[-0.085em] text-[#F4F5F0] [text-shadow:0_0_30px_rgba(255,255,255,.11)]"><span className="mr-1 text-[.65em] text-[#AABCA2]">¥</span>{overview?.platformTotalRevenue ?? "—"}</p>}<div className={"mt-5 flex w-max items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-extrabold " + (trend !== null && trend < 0 ? "border border-white/[0.08] bg-white/[0.08] text-[#B7C5B0]" : "bg-[#9FE870] text-[#0A1408]")}>{trend !== null && trend < 0 ? <TrendingDown size={13} /> : <TrendingUp size={13} />}{trend === null ? "30% 固定利润留存" : `本月环比 ${trend > 0 ? "+" : ""}${trend.toFixed(1)}%`}</div></div></article><div className="grid grid-cols-3 gap-5"><Metric icon={Activity} label="全网 GMV 总成交" value={"¥" + (overview?.totalGmv ?? "—")} detail={(overview?.paidOrderCount ?? 0).toLocaleString() + " 笔已支付订单"} loading={loadingOverview} /><Metric icon={WalletCards} label="代理已分润奖金池" value={"¥" + (overview?.agentCommissionPool ?? "—")} detail="利润池 70% · 出单与导师" loading={loadingOverview} /><Metric icon={UsersRound} label="网络合伙人总数" value={String(overview?.agentCount ?? 0).padStart(2, "0")} detail={roots.length + " 位一级 · " + roots.reduce((sum, node) => sum + node.children.length, 0) + " 位二级"} loading={loadingOverview || loadingTree} /></div></section>
-      <section className="mt-14" aria-labelledby="tree-heading"><div className="mb-6 flex items-end justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#76906C]">Network / 01</p><h2 id="tree-heading" className="mt-2 text-[25px] font-extrabold tracking-[-0.06em]">代理裂变拓扑</h2><p className="mt-2 text-[12px] text-[#8E9B8A]">平台主管 → 一级代理 → 二级团队，严格一层导师分润。</p></div><span className="inline-flex items-center gap-1.5 rounded-full border border-[#9FE870]/20 bg-[#9FE870]/10 px-3 py-2 text-[10px] font-bold text-[#9FE870]"><Network size={14} />二级结构</span></div><div className="grid gap-5 xl:grid-cols-[minmax(0,1.9fr)_minmax(320px,.9fr)]"><div className="space-y-3.5"><div className="flex items-center gap-3 rounded-[22px] border border-[#9FE870]/12 bg-[#172516] px-5 py-4"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#9FE870] text-[#0A1408]"><Crown size={16} /></span><span><span className="block text-[12px] font-bold">{tree?.root.displayName ?? "平台总控"}</span><span className="mt-1 block text-[10px] text-[#8E9B8A]">根节点 · {roots.length} 位直属一级代理</span></span><span className="ml-auto rounded-full border border-white/[0.08] px-2.5 py-1 font-mono text-[10px] text-[#97B58A]">LEVEL 0</span></div>{loadingTree ? [0, 1, 2].map((index) => <div key={index} className={surface + " h-24 p-5"}><Skeleton className="h-12 w-full" /></div>) : visibleRoots.length ? visibleRoots.map((node) => <TeamRoot key={node.id} node={node} open={openRoots.has(node.id) || Boolean(search)} activeId={selectedId} onToggle={() => toggleRoot(node.id)} onSelect={setSelectedId} query={search} period={period} />) : <p className={surface + " px-6 py-12 text-center text-[12px] text-[#8E9B8A]"}>没有匹配的代理。</p>}</div><Inspector selected={selected} parent={parent} /></div></section>
-      <section className="mt-14" aria-labelledby="audit-heading"><div className="mb-6 flex items-end justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#76906C]">Capital flow / 02</p><h2 id="audit-heading" className="mt-2 text-[25px] font-extrabold tracking-[-0.06em]">全网分润审计</h2><p className="mt-2 text-[12px] text-[#8E9B8A]">每笔订单清晰拆解利润池、平台留存、出单人和直属导师。</p></div><span className="rounded-full border border-white/[0.08] bg-[#141C13] px-3 py-2 font-mono text-[10px] text-[#9EB097]">{audit?.total ?? 0} ORDERS</span></div><div className="space-y-3.5">{loadingAudit ? [0, 1, 2].map((index) => <div key={index} className={surface + " h-[160px] p-5"}><Skeleton className="h-full w-full" /></div>) : audit?.items.length ? audit.items.map((item) => <AuditFlowCard key={item.id} item={item} />) : <p className={surface + " px-6 py-14 text-center text-[12px] text-[#8E9B8A]"}>当前条件下暂无订单。</p>}</div><div className="mt-5 flex items-center justify-between"><p className="text-[10px] text-[#73836F]">{demo ? "精选演示订单" : "金额来自实际结算流水"} · UTC 时间</p><div className="flex items-center gap-3"><span className="font-mono text-[10px] text-[#8E9B8A]">{page} / {Math.max(audit?.totalPages ?? 1, 1)}</span><button type="button" onClick={() => setPage((old) => Math.max(1, old - 1))} disabled={page <= 1 || loadingAudit} aria-label="上一页" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-[#141C13] text-[#C2D4B8] disabled:opacity-30"><ChevronLeft size={16} /></button><button type="button" onClick={() => setPage((old) => old + 1)} disabled={loadingAudit || !audit || page >= audit.totalPages} aria-label="下一页" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-[#141C13] text-[#C2D4B8] disabled:opacity-30"><ChevronRight size={16} /></button></div></div></section>
-      <footer className="mt-16 flex items-center justify-between border-t border-white/[0.07] pt-5 text-[10px] text-[#61745D]"><span>PLATFORM CONSOLE · 严格二级分润</span><span className="font-mono">30% PLATFORM / 70% AGENTS</span></footer>
-    </main></div></div>;
+  useEffect(() => {
+    if (demo) {
+      const items = filteredDemoAudit(auditFilters);
+      setAudit({
+        items: items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+        page,
+        pageSize: PAGE_SIZE,
+        total: items.length,
+        totalPages: Math.ceil(items.length / PAGE_SIZE),
+      });
+      return;
+    }
+    const controller = new AbortController();
+    setAuditLoading(true);
+    setAuditError("");
+    adminGet<AuditPage>(
+      "/api/admin/commission-audit?" +
+        new URLSearchParams(
+          Object.entries({
+            ...auditFilters,
+            page: String(page),
+            pageSize: String(PAGE_SIZE),
+          }).filter(([, value]) => value !== undefined) as [string, string][],
+        ),
+      controller.signal,
+    )
+      .then((value) => {
+        if (!controller.signal.aborted) {
+          setAudit(value);
+          setAuditAt(new Date().toISOString());
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setAuditError("审计流水暂时不可用");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAuditLoading(false);
+      });
+    return () => controller.abort();
+  }, [demo, period, page, search, revision, bounds, view]);
+  async function download() {
+    if (exporting) return;
+    setExporting(true);
+    setMessage("");
+    try {
+      const count = await exportAdminAudit(demo, auditFilters);
+      setMessage(
+        count === null ? "对账文件已生成" : `已导出 ${count} 笔演示订单`,
+      );
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "导出失败，请重试");
+    } finally {
+      setExporting(false);
+    }
+  }
+  async function logout() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      const response = await fetch("/api/auth/admin/logout", {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error();
+      window.location.replace("/login/");
+    } catch {
+      setMessage("退出失败，请重试");
+      setSigningOut(false);
+    }
+  }
+  function switchView(next: Workspace) {
+    if (next === view) return;
+    setView(next);
+    setPage(1);
+    setBounds({});
+    setMessage("");
+  }
+  const errorPanel = (error: string) => (
+    <p
+      role="alert"
+      className="rounded-lg border border-[#333] bg-[#151515] p-5 text-sm text-[#B3B3B3]"
+    >
+      {error}
+      <button className="ml-4 underline" onClick={retry}>
+        重试
+      </button>
+      <Link href="/login/" className="ml-4 underline">
+        重新登录
+      </Link>
+    </p>
+  );
+  const title = sections.find((s) => s.id === view)!.label;
+  const auditSection = (
+    <section aria-label="全网分账审计" className="min-w-0">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">
+            {view === "overview" ? "最新分账" : "订单分账记录"}
+          </h2>
+          <p className="mt-1.5 text-xs text-[#909090]">
+            共 {audit?.total ?? "—"} 笔 · 原始入账与退款状态逐笔核对
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 rounded-lg border border-[#303030] bg-[#161616] px-3">
+            <Search size={16} className="text-[#929292]" />
+            <input
+              aria-label="搜索订单或出单人"
+              maxLength={80}
+              placeholder="订单号 / 出单人"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="h-10 w-44 bg-transparent text-sm outline-none"
+            />
+          </label>
+          <button
+            className="exchange-secondary"
+            disabled={exporting || auditLoading || query.trim() !== search}
+            onClick={download}
+          >
+            <Download size={15} />
+            {exporting ? "正在导出…" : "导出对账"}
+          </button>
+          {view === "overview" && (
+            <button
+              onClick={() => switchView("audit")}
+              aria-label="查看全部审计"
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#303030]"
+            >
+              <ArrowUpRight size={18} />
+            </button>
+          )}
+        </div>
+      </div>
+      {view === "audit" && (
+        <div className="mb-4">
+          <DateFilter demo={demo} onChange={setBounds} />
+        </div>
+      )}
+      {auditError ? (
+        errorPanel(auditError)
+      ) : auditLoading ? (
+        <Skeleton className="h-60 w-full" />
+      ) : audit?.items.length ? (
+        <AdminAuditTable
+          items={view === "overview" ? audit.items.slice(0, 4) : audit.items}
+        />
+      ) : (
+        <p className="rounded-lg border border-[#262626] py-14 text-center text-sm text-[#929292]">
+          当前条件下暂无订单
+        </p>
+      )}
+      {view === "audit" && audit && audit.totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-end gap-4 text-sm">
+          <button
+            disabled={page === 1 || auditLoading}
+            onClick={() => setPage((p) => p - 1)}
+            className="exchange-secondary"
+          >
+            上一页
+          </button>
+          <span className="font-mono text-[#929292]">
+            {page} / {audit.totalPages}
+          </span>
+          <button
+            disabled={page >= audit.totalPages || auditLoading}
+            onClick={() => setPage((p) => p + 1)}
+            className="exchange-secondary"
+          >
+            下一页
+          </button>
+        </div>
+      )}
+    </section>
+  );
+  return (
+    <div className="min-h-dvh bg-[#0A0A0A] text-[#F5F5F5]">
+      <header className="sticky top-0 z-30 border-b border-[#262626] bg-[#090909]/95 backdrop-blur-md">
+        <div className="mx-auto flex min-h-16 max-w-[1680px] items-center justify-between gap-4 px-6 lg:px-10">
+          <div className="flex items-center gap-4">
+            <span className="text-xl font-bold tracking-[-.06em]">
+              CONSOLE<span className="ml-1 text-[#C5FF59]">▰</span>
+            </span>
+            <span className="hidden border-l border-[#343434] pl-4 text-xs text-[#949494] sm:block">
+              分润平台 · 管理中心
+            </span>
+          </div>
+          <div className="flex items-center gap-5 text-xs text-[#AAA]">
+            <Link
+              href="/admin/mobile/"
+              className="flex min-h-10 items-center gap-1.5"
+            >
+              <Smartphone size={15} />
+              手机版
+            </Link>
+            {demo ? (
+              <span className="rounded border border-[#3A3A3A] px-2 py-1 font-mono">
+                DEMO
+              </span>
+            ) : (
+              <button
+                disabled={signingOut}
+                onClick={logout}
+                className="flex items-center gap-2"
+              >
+                <LogOut size={14} />
+                {signingOut ? "退出中…" : "退出"}
+              </button>
+            )}
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#262626] text-xs font-semibold text-white">
+              老板
+            </span>
+          </div>
+        </div>
+      </header>
+      <div className="mx-auto max-w-[1680px] px-6 pb-10 lg:px-10">
+        <nav
+          aria-label="老板工作区导航"
+          className="flex gap-8 overflow-x-auto border-b border-[#262626]"
+        >
+          {sections.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              aria-current={view === id ? "page" : undefined}
+              onClick={() => switchView(id)}
+              className="exchange-tab flex items-center gap-2"
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </nav>
+        <div className="mb-7 mt-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs text-[#787878]">
+              管理中心 <span className="mx-2">/</span> {title}
+            </p>
+            <h1 className="mt-2 text-[28px] font-semibold tracking-tight">
+              {title}
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-5">
+            <RefreshStatus
+              demo={demo}
+              at={view === "audit" ? auditAt : updatedAt}
+              busy={overviewLoading || auditLoading}
+              onRefresh={retry}
+            />
+            {(view === "overview" || view === "network") && (
+              <select
+                aria-label="统计周期"
+                value={period}
+                onChange={(e) => {
+                  setPeriod(e.target.value as "all" | "month");
+                  setBounds({});
+                }}
+                className="h-10 rounded-lg border border-[#333] bg-[#161616] px-3 text-sm"
+              >
+                <option value="all">全周期</option>
+                <option value="month">本月 · UTC</option>
+              </select>
+            )}
+          </div>
+        </div>
+        {message && (
+          <p
+            role="status"
+            aria-live="polite"
+            className="mb-5 rounded-lg border border-[#333] bg-[#181818] px-4 py-3 text-sm"
+          >
+            {message}
+          </p>
+        )}
+        {view === "overview" && (
+          <>
+            {overviewError ? (
+              errorPanel(overviewError)
+            ) : (
+              <section className="grid border-y border-[#262626] lg:grid-cols-[1.25fr_1.75fr]">
+                <article className="py-7 lg:border-r lg:border-[#262626] lg:pr-10">
+                  <div className="flex items-center gap-3 text-sm text-[#999]">
+                    平台净收益
+                    <span className="rounded border border-[#353535] px-1.5 py-0.5 font-mono text-[11px] text-white">
+                      30%
+                    </span>
+                  </div>
+                  {overviewLoading ? (
+                    <Skeleton className="mt-5 h-14 w-64" />
+                  ) : (
+                    <p className="financial-number mt-4 font-mono text-[clamp(28px,3.2vw,49px)] font-semibold">
+                      {displayAmount(overview?.platformTotalRevenue)}
+                    </p>
+                  )}
+                  <p className="mt-3 flex items-center gap-1.5 text-xs text-[#929292]">
+                    <ShieldCheck size={13} className="text-[var(--positive)]" />
+                    已扣除退款冲正 ·{" "}
+                    {period === "all" ? "累计净收益" : "本月净收益"}
+                  </p>
+                  <button
+                    className="mt-6 flex min-h-9 items-center gap-2 text-sm font-medium"
+                    onClick={() => switchView("treasury")}
+                  >
+                    管理资金与提现
+                    <ArrowUpRight size={16} />
+                  </button>
+                </article>
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:pl-8">
+                  {[
+                    {
+                      label: "全网净成交 GMV",
+                      value: displayAmount(overview?.totalGmv),
+                      detail: "支付减退款",
+                    },
+                    {
+                      label: "代理净分成",
+                      value: displayAmount(overview?.agentCommissionPool),
+                      detail: "70% 奖金池",
+                    },
+                    {
+                      label: "网络合伙人",
+                      value: overview ? String(overview.agentCount) : "—",
+                      detail: "一级 + 二级",
+                    },
+                  ].map((metric) => (
+                    <article
+                      key={metric.label}
+                      className="min-w-0 py-7 sm:px-4"
+                    >
+                      <p className="text-sm text-[#999]">{metric.label}</p>
+                      {overviewLoading ? (
+                        <Skeleton className="mt-7 h-8 w-full" />
+                      ) : (
+                        <p className="financial-number mt-7 font-mono text-[clamp(17px,1.6vw,28px)] font-semibold">
+                          {metric.value}
+                        </p>
+                      )}
+                      <p className="mt-3 text-xs text-[#787878]">
+                        {metric.detail}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+            <div className="my-7 grid items-stretch gap-5 lg:grid-cols-[1fr_1fr]">
+              <WalletSummary demo={demo} revision={revision} />
+              <section
+                aria-label="分润规则"
+                className="rounded-lg border border-[#262626] bg-[#101010] p-5"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-medium">分润规则</h2>
+                  <div className="flex gap-3 text-xs">
+                    <button
+                      aria-pressed={twoLevel}
+                      onClick={() => setTwoLevel(true)}
+                      className={
+                        twoLevel
+                          ? "text-white underline underline-offset-4"
+                          : "text-[#777]"
+                      }
+                    >
+                      两级订单
+                    </button>
+                    <button
+                      aria-pressed={!twoLevel}
+                      onClick={() => setTwoLevel(false)}
+                      className={
+                        !twoLevel
+                          ? "text-white underline underline-offset-4"
+                          : "text-[#777]"
+                      }
+                    >
+                      直推订单
+                    </button>
+                  </div>
+                </div>
+                <div
+                  className="mt-6 flex h-2 gap-1 overflow-hidden rounded-sm"
+                  aria-hidden="true"
+                >
+                  <span className="w-[30%] bg-[#EBEBEB]" />
+                  <span
+                    style={{ width: twoLevel ? "49%" : "70%" }}
+                    className="bg-[#757575]"
+                  />
+                  {twoLevel && <span className="w-[21%] bg-[#C5FF59]" />}
+                </div>
+                <div className="mt-4 flex flex-wrap justify-between gap-3 text-xs text-[#999]">
+                  <span>
+                    平台留存{" "}
+                    <strong className="ml-1 font-mono text-white">30%</strong>
+                  </span>
+                  <span>
+                    出单代理{" "}
+                    <strong className="ml-1 font-mono text-white">
+                      {twoLevel ? 49 : 70}%
+                    </strong>
+                  </span>
+                  {twoLevel && (
+                    <span>
+                      直属导师{" "}
+                      <strong className="ml-1 font-mono text-white">21%</strong>
+                    </span>
+                  )}
+                </div>
+                <p className="mt-4 text-[11px] text-[#777]">
+                  按订单利润分配，尾差按结算规则处理。
+                </p>
+              </section>
+            </div>
+            <AdminOperations
+              demo={demo}
+              refreshKey={revision}
+              onSelect={(focus) => {
+                setTreasuryFocus(focus);
+                setView("treasury");
+              }}
+            />
+            <div className="mt-8">{auditSection}</div>
+          </>
+        )}
+        {view === "network" && (
+          <AdminNetwork demo={demo} period={period} refreshKey={revision} />
+        )}
+        {view === "audit" && auditSection}
+        {view === "treasury" && (
+          <div className="space-y-6">
+            <WalletSummary demo={demo} revision={revision} />
+            <AdminOperations
+              demo={demo}
+              refreshKey={revision}
+              onSelect={setTreasuryFocus}
+            />
+            <AdminTreasury
+              demo={demo}
+              focus={treasuryFocus}
+              onComplete={retry}
+            />
+          </div>
+        )}
+        <footer className="mt-10 flex flex-wrap justify-between gap-3 border-t border-[#222] pt-5 text-[11px] text-[#707070]">
+          <span>CONSOLE / 二级分润 · 平台统一结算</span>
+          <span>
+            {demo
+              ? "演示快照 2026-10-03 · 虚构数据"
+              : "财务时间 UTC · 页面可见时每分钟更新"}
+          </span>
+        </footer>
+      </div>
+    </div>
+  );
 }

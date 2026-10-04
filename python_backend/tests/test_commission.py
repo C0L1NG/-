@@ -1,34 +1,63 @@
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytest
 from sqlalchemy.dialects import postgresql
 
 from app.commission import calculate_order_commission, money, process_order_commission
-from app.models import CommissionLog, CommissionRole, Order, PaymentStatus, PlatformCommissionLog, SettlementStatus, User, UserRole
+from app.models import (
+    CommissionLog,
+    CommissionRole,
+    Order,
+    PaymentStatus,
+    PlatformCommissionLog,
+    SettlementStatus,
+    User,
+    UserRole,
+    Wallet,
+)
 
 
 def test_direct_promoter_gets_entire_70_percent_pool():
     result = calculate_order_commission("100.00", False)
-    assert tuple(map(money, (result.platform_amount, result.bonus_pool, result.promoter_amount))) == (
-        "30.00", "70.00", "70.00")
+    assert tuple(
+        map(money, (result.platform_amount, result.bonus_pool, result.promoter_amount))
+    ) == ("30.00", "70.00", "70.00")
     assert result.parent_amount is None
 
 
 def test_two_levels_get_49_and_21_percent_without_drift():
     result = calculate_order_commission("100.00", True)
-    assert tuple(map(money, (result.platform_amount, result.bonus_pool,
-        result.promoter_amount, result.parent_amount))) == ("30.00", "70.00", "49.00", "21.00")
-    assert result.platform_amount + result.promoter_amount + result.parent_amount == result.profit_amount
+    assert tuple(
+        map(
+            money,
+            (
+                result.platform_amount,
+                result.bonus_pool,
+                result.promoter_amount,
+                result.parent_amount,
+            ),
+        )
+    ) == ("30.00", "70.00", "49.00", "21.00")
+    assert (
+        result.platform_amount + result.promoter_amount + result.parent_amount
+        == result.profit_amount
+    )
 
 
 @pytest.mark.parametrize("profit", ["0.01", "0.05", "0.07", "100000000.03"])
 def test_remainder_is_allocated_once_to_the_direct_parent(profit):
     result = calculate_order_commission(profit, True)
-    assert result.platform_amount + result.promoter_amount + result.parent_amount == result.profit_amount
+    assert (
+        result.platform_amount + result.promoter_amount + result.parent_amount
+        == result.profit_amount
+    )
     assert result.parent_amount >= 0
-    assert all(value.as_tuple().exponent >= -2 for value in (result.platform_amount,
-        result.promoter_amount, result.parent_amount))
+    assert all(
+        value.as_tuple().exponent >= -2
+        for value in (result.platform_amount, result.promoter_amount, result.parent_amount)
+    )
 
 
 @pytest.mark.parametrize("profit", ["-1.00", "0.001", "NaN", "Infinity"])
@@ -67,6 +96,7 @@ class FakeSession:
         self.writes = []
         self.created = []
         self.committed = False
+        self.missing_wallet = False
         self.responses = [uuid.uuid4()] * (2 if promoter.parent_id else 1) + [order.id]
 
     async def __aenter__(self):
@@ -80,7 +110,22 @@ class FakeSession:
 
     async def scalars(self, statement):
         self.selects.append(statement)
-        return ScalarRows(self.order if len(self.selects) == 1 else self.promoter)
+        model = statement.column_descriptions[0]["entity"]
+        if model is Order:
+            return ScalarRows(self.order)
+        if self.missing_wallet and model is Wallet:
+            return ScalarRows(None)
+        return ScalarRows(
+            model(
+                balance=Decimal(0),
+                frozen_balance=Decimal(0),
+                total_earned=Decimal(0),
+                debt_balance=Decimal(0),
+            )
+        )
+
+    async def execute(self, statement):
+        self.writes.append(statement)
 
     async def scalar(self, statement):
         self.writes.append(statement)
@@ -98,27 +143,44 @@ class FakeSession:
 async def test_settlement_uses_row_locks_and_atomic_wallet_updates(has_parent):
     order_id, promoter_id = uuid.uuid4(), uuid.uuid4()
     parent_id = uuid.uuid4() if has_parent else None
-    order = Order(id=order_id, promoter_id=promoter_id, profit_amount=Decimal("100.00"),
-        payment_status=PaymentStatus.PAID, settlement_status=SettlementStatus.PENDING)
+    order = Order(
+        id=order_id,
+        promoter_id=promoter_id,
+        profit_amount=Decimal("100.00"),
+        payment_status=PaymentStatus.PAID,
+        settlement_status=SettlementStatus.PENDING,
+        attribution_parent_id=parent_id,
+        attribution_locked_at=datetime.now(timezone.utc),
+        rule_version="two_level_v1",
+    )
     promoter = User(id=promoter_id, role=UserRole.AGENT, parent_id=parent_id)
     fake = FakeSession(order, promoter)
     result = await process_order_commission(str(order_id), lambda: fake)
-    assert result == {"status": "settled", "orderId": str(order_id), "platformAmount": "30.00",
-        "bonusPool": "70.00", "promoterAmount": "49.00" if has_parent else "70.00",
-        "parentAmount": "21.00" if has_parent else None}
+    assert result == {
+        "status": "settled",
+        "orderId": str(order_id),
+        "platformAmount": "30.00",
+        "bonusPool": "70.00",
+        "promoterAmount": "49.00" if has_parent else "70.00",
+        "parentAmount": "21.00" if has_parent else None,
+    }
     assert fake.committed
     sql = [str(statement.compile(dialect=postgresql.dialect())) for statement in fake.selects]
-    assert "FOR UPDATE" in sql[0] and "FOR SHARE" in sql[1]
+    assert all("FOR UPDATE" in statement for statement in sql)
     assert len(fake.writes) == (3 if has_parent else 2)
-    for statement in fake.writes[:-1]:
+    for statement in fake.writes:
         compiled = str(statement.compile(dialect=postgresql.dialect()))
-        assert "balance=(wallets.balance +" in compiled
-        assert "total_earned=(wallets.total_earned +" in compiled
+        table = statement.table.name
+        assert f"balance=({table}.balance +" in compiled
+        assert f"total_earned=({table}.total_earned +" in compiled
     assert sum(isinstance(value, PlatformCommissionLog) for value in fake.created) == 1
     logs = [value for value in fake.created if isinstance(value, CommissionLog)]
     assert len(logs) == (2 if has_parent else 1)
-    assert [log.role_type for log in logs] == ([CommissionRole.PROMOTER, CommissionRole.PARENT]
-        if has_parent else [CommissionRole.PROMOTER])
+    assert [log.role_type for log in logs] == (
+        [CommissionRole.PROMOTER, CommissionRole.PARENT]
+        if has_parent
+        else [CommissionRole.PROMOTER]
+    )
 
 
 @pytest.mark.asyncio
@@ -127,15 +189,20 @@ async def test_duplicate_settlement_has_no_wallet_or_log_writes():
     order = Order(id=order_id, settlement_status=SettlementStatus.SETTLED)
     fake = FakeSession(order, User(id=uuid.uuid4(), role=UserRole.AGENT))
     assert await process_order_commission(str(order_id), lambda: fake) == {
-        "status": "already_settled", "orderId": str(order_id)}
+        "status": "already_settled",
+        "orderId": str(order_id),
+    }
     assert fake.committed and fake.writes == [] and fake.created == []
 
 
 @pytest.mark.asyncio
 async def test_unpaid_order_cannot_credit_wallets():
     order_id = uuid.uuid4()
-    order = Order(id=order_id, payment_status=PaymentStatus.PENDING,
-        settlement_status=SettlementStatus.PENDING)
+    order = Order(
+        id=order_id,
+        payment_status=PaymentStatus.PENDING,
+        settlement_status=SettlementStatus.PENDING,
+    )
     fake = FakeSession(order, User(id=uuid.uuid4(), role=UserRole.AGENT))
     with pytest.raises(ValueError, match="has not been paid"):
         await process_order_commission(str(order_id), lambda: fake)
@@ -145,10 +212,20 @@ async def test_unpaid_order_cannot_credit_wallets():
 @pytest.mark.asyncio
 async def test_missing_second_wallet_rolls_back_whole_settlement():
     order_id, promoter_id, parent_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    order = Order(id=order_id, promoter_id=promoter_id, profit_amount=Decimal("100.00"),
-        payment_status=PaymentStatus.PAID, settlement_status=SettlementStatus.PENDING)
+    order = Order(
+        id=order_id,
+        promoter_id=promoter_id,
+        profit_amount=Decimal("100.00"),
+        payment_status=PaymentStatus.PAID,
+        settlement_status=SettlementStatus.PENDING,
+        attribution_parent_id=parent_id,
+        attribution_locked_at=datetime.now(timezone.utc),
+        rule_version="two_level_v1",
+    )
     fake = FakeSession(order, User(id=promoter_id, role=UserRole.AGENT, parent_id=parent_id))
-    fake.responses[1] = None
+    fake.missing_wallet = True
     with pytest.raises(ValueError, match="Wallet for agent"):
         await process_order_commission(str(order_id), lambda: fake)
-    assert not fake.committed and fake.created == []
+    assert not fake.committed and not any(
+        isinstance(value, CommissionLog) for value in fake.created
+    )

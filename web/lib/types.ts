@@ -1,8 +1,8 @@
 export type {
   AgentOverview as Overview,
   Referral,
-  LedgerItem,
-  LedgerPage,
+  AgentActivityItem as LedgerItem,
+  AgentActivityPage as LedgerPage,
   TeamMember,
   TeamPage,
   MiniProgramCode,

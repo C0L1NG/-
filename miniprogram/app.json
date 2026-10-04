@@ -1,19 +1,44 @@
 {
   "pages": [
     "pages/home/index",
+    "pages/progress/index",
+    "pages/ledger/index",
+    "pages/profile/index",
     "pages/referral/index",
     "pages/team/index",
-    "pages/ledger/index"
+    "pages/withdrawals/index"
   ],
-  "window": { "navigationBarTitleText": "代理工作台", "navigationBarBackgroundColor": "#F6F7F2", "navigationBarTextStyle": "black", "backgroundColor": "#F6F7F2" },
+  "window": {
+    "navigationBarTitleText": "合伙人账户",
+    "navigationBarBackgroundColor": "#0A0A0A",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0A0A0A",
+    "enablePullDownRefresh": true
+  },
   "tabBar": {
-    "color": "#879182", "selectedColor": "#132A00", "backgroundColor": "#F6F7F2", "borderStyle": "white",
+    "color": "#949494",
+    "selectedColor": "#F5F5F5",
+    "backgroundColor": "#0A0A0A",
+    "borderStyle": "black",
     "list": [
-      { "pagePath": "pages/home/index", "text": "首页" },
-      { "pagePath": "pages/referral/index", "text": "推广" },
-      { "pagePath": "pages/team/index", "text": "团队" },
-      { "pagePath": "pages/ledger/index", "text": "明细" }
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/progress/index",
+        "text": "进展"
+      },
+      {
+        "pagePath": "pages/ledger/index",
+        "text": "明细"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
     ]
   },
-  "style": "v2", "sitemapLocation": "sitemap.json"
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
 }

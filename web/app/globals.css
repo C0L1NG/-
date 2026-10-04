@@ -1,12 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+  --font-sans:
+    "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", sans-serif;
   --font-mono: "Geist Mono", "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
 :root {
   color-scheme: dark;
+  --action-bg: #f5f5f5;
+  --action-text: #111111;
+  --positive: #20bf83;
+  --negative: #f36673;
+  --focus: #a3a3a3;
 }
 
 html {
@@ -15,8 +22,8 @@ html {
 
 body {
   margin: 0;
-  background: #0b0f0b;
-  color: #f4f5f0;
+  background: #0a0a0a;
+  color: #f5f5f5;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
@@ -26,11 +33,89 @@ body {
 }
 
 ::selection {
-  background: #9fe870;
-  color: #0a1408;
+  background: #e5e5e5;
+  color: #111;
 }
 
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+button:not(:disabled),
+summary,
+select {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+.exchange-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0 18px;
+  background: var(--action-bg);
+  color: var(--action-text);
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 150ms;
+}
+.exchange-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid var(--agent-line, #303030);
+  border-radius: 8px;
+  padding: 0 18px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+}
+.exchange-primary:hover,
+.exchange-secondary:hover {
+  opacity: 0.8;
+}
+.exchange-primary:disabled,
+.exchange-secondary:disabled {
+  opacity: 0.4;
+}
+.exchange-tab {
+  padding: 15px 0;
+  color: #8f8f8f;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.exchange-tab[aria-current="page"] {
+  color: #f5f5f5;
+  border-bottom-color: #f5f5f5;
+  font-weight: 600;
+}
+.financial-number {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -59,15 +59,18 @@ async def test_parent_binding_locks_both_rows_and_sets_parent_once():
     result = await bind_direct_parent(current.id, "ROOT", lambda: session)
     assert result == {"status": "bound", "parentId": str(parent.id)}
     assert session.committed
-    assert "ORDER BY users.id FOR UPDATE" in str(session.statements[0].compile(
-        dialect=postgresql.dialect()))
+    assert "ORDER BY users.id FOR UPDATE" in str(
+        session.statements[0].compile(dialect=postgresql.dialect())
+    )
     assert len(session.statements) == 3
 
 
 @pytest.mark.asyncio
 async def test_parent_binding_rejects_third_level_without_update():
     current = User(id=uuid.uuid4(), role=UserRole.AGENT, referral_code="SELF", parent_id=None)
-    parent = User(id=uuid.uuid4(), role=UserRole.AGENT, referral_code="CHILD", parent_id=uuid.uuid4())
+    parent = User(
+        id=uuid.uuid4(), role=UserRole.AGENT, referral_code="CHILD", parent_id=uuid.uuid4()
+    )
     session = Session(current, parent)
     with pytest.raises(APIError) as raised:
         await bind_direct_parent(current.id, "CHILD", lambda: session)

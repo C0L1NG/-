@@ -49,6 +49,10 @@ model User {
   referralCode   String?  @unique(map: "users_referral_code_key") @map("referral_code") @db.VarChar(64)
   parentId       String?  @map("parent_id") @db.Uuid
   parentBoundAt  DateTime? @map("parent_bound_at") @db.Timestamptz(6)
+  loginName      String? @unique(map: "users_login_name_key") @map("login_name") @db.VarChar(80)
+  passwordHash   String? @map("password_hash") @db.VarChar(256)
+  tokenVersion   Int @default(0) @map("token_version")
+  isActive       Boolean @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -57,6 +61,15 @@ model User {
   wallet         Wallet?
   promotedOrders Order[]         @relation("OrderPromoter")
   commissions    CommissionLog[] @relation("CommissionRecipient")
+  attributedOrders Order[] @relation("OrderAttribution")
+  walletMovements WalletMovement[]
+  payoutAccounts PayoutAccount[] @relation("PayoutOwner")
+  verifiedAccounts PayoutAccount[] @relation("PayoutVerifier")
+  withdrawals Withdrawal[] @relation("WithdrawalOwner")
+  reviewedWithdrawals Withdrawal[] @relation("WithdrawalReviewer")
+  webLoginTickets WebLoginTicket[]
+  claimedWithdrawals Withdrawal[] @relation("WithdrawalClaimant")
+  withdrawalActions WithdrawalAction[]
 
   @@index([parentId], map: "users_parent_id_idx")
   @@map("users")
@@ -75,10 +88,23 @@ model Order {
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  attributionParentId String? @map("attribution_parent_id") @db.Uuid
+  attributionLockedAt DateTime? @map("attribution_locked_at") @db.Timestamptz(6)
+  ruleVersion String @default("two_level_v1") @map("rule_version") @db.VarChar(40)
+  paidAt DateTime? @map("paid_at") @db.Timestamptz(6)
+  settledAt DateTime? @map("settled_at") @db.Timestamptz(6)
+  refundedAt DateTime? @map("refunded_at") @db.Timestamptz(6)
+  paymentReference String? @unique(map: "orders_payment_reference_key") @map("payment_reference") @db.VarChar(128)
+  attributionParent User? @relation("OrderAttribution", fields: [attributionParentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  paymentEvents PaymentEvent[]
+  refund Refund?
+
   promoter       User            @relation("OrderPromoter", fields: [promoterId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_promoter_id_fkey")
   commissionLogs CommissionLog[]
   platformCommission PlatformCommissionLog?
 
+  @@index([paidAt, id], map: "orders_paid_at_idx")
+  @@index([settledAt, id], map: "orders_settled_at_idx")
   @@index([customerId], map: "orders_customer_id_idx")
   @@index([promoterId], map: "orders_promoter_id_idx")
   @@map("orders")
@@ -88,6 +114,7 @@ model Wallet {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId        String   @unique(map: "wallets_user_id_key") @map("user_id") @db.Uuid
   balance       Decimal  @default(0) @db.Decimal(18, 2)
+  debtBalance Decimal @default(0) @map("debt_balance") @db.Decimal(18, 2)
   frozenBalance Decimal  @default(0) @map("frozen_balance") @db.Decimal(18, 2)
   totalEarned   Decimal  @default(0) @map("total_earned") @db.Decimal(18, 2)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -124,5 +151,151 @@ model PlatformCommissionLog {
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "platform_commission_logs_order_id_fkey")
 
+  @@index([createdAt,id],map:"platform_commission_logs_created_at_idx")
   @@map("platform_commission_logs")
+}
+
+model PlatformWallet {
+  id String @id @default("platform") @db.VarChar(20)
+  balance Decimal @default(0) @db.Decimal(18,2)
+  frozenBalance Decimal @default(0) @map("frozen_balance") @db.Decimal(18,2)
+  totalEarned Decimal @default(0) @map("total_earned") @db.Decimal(18,2)
+  debtBalance Decimal @default(0) @map("debt_balance") @db.Decimal(18,2)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  @@map("platform_wallets")
+}
+model WalletMovement {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accountKey String @map("account_key") @db.VarChar(40)
+  userId String? @map("user_id") @db.Uuid
+  businessId String @map("business_id") @db.VarChar(128)
+  kind String @db.VarChar(32)
+  amount Decimal @db.Decimal(18,2)
+  balanceDelta Decimal @map("balance_delta") @db.Decimal(18,2)
+  frozenDelta Decimal @default(0) @map("frozen_delta") @db.Decimal(18,2)
+  earnedDelta Decimal @default(0) @map("earned_delta") @db.Decimal(18,2)
+  debtDelta Decimal @default(0) @map("debt_delta") @db.Decimal(18,2)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user User? @relation(fields:[userId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  @@unique([businessId,kind,accountKey],map:"wallet_movements_business_kind_account_key")
+  @@index([accountKey,createdAt,id],map:"wallet_movements_account_time_idx")
+  @@index([userId,kind,createdAt,id],map:"wallet_movements_user_kind_time_idx")
+  @@map("wallet_movements")
+}
+model PaymentEvent {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider String @db.VarChar(40)
+  eventId String @map("event_id") @db.VarChar(128)
+  payloadHash String @map("payload_hash") @db.VarChar(64)
+  orderId String @map("order_id") @db.Uuid
+  eventType String @map("event_type") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  order Order @relation(fields:[orderId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  @@unique([provider,eventId],map:"payment_events_provider_event_key")
+  @@map("payment_events")
+}
+model Refund {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId String @unique @map("order_id") @db.Uuid
+  paymentReference String @unique @map("payment_reference") @db.VarChar(128)
+  totalAmount Decimal @map("total_amount") @db.Decimal(18,2)
+  platformAmount Decimal @map("platform_amount") @db.Decimal(18,2)
+  agentAmount Decimal @map("agent_amount") @db.Decimal(18,2)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  order Order @relation(fields:[orderId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  @@index([createdAt,id],map:"refunds_created_at_idx")
+  @@map("refunds")
+}
+model PayoutAccount {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  provider String @db.VarChar(20)
+  accountReference String @map("account_reference") @db.VarChar(128)
+  label String @db.VarChar(80)
+  verified Boolean @default(false)
+  verifiedBy String? @map("verified_by") @db.Uuid
+  verificationReference String? @map("verification_reference") @db.VarChar(128)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user User @relation("PayoutOwner",fields:[userId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  verifier User? @relation("PayoutVerifier",fields:[verifiedBy],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  withdrawals Withdrawal[]
+  @@unique([userId,provider],map:"payout_accounts_user_provider_key")
+  @@map("payout_accounts")
+}
+model Withdrawal {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  accountId String @map("account_id") @db.Uuid
+  accountScope String @map("account_scope") @db.VarChar(20)
+  amount Decimal @db.Decimal(18,2)
+  status String @default("pending") @db.VarChar(20)
+  idempotencyKey String @map("idempotency_key") @db.VarChar(80)
+  payoutReference String? @unique @map("payout_reference") @db.VarChar(128)
+  rejectionReason String? @map("rejection_reason") @db.VarChar(256)
+  failureReference String? @map("failure_reference") @db.VarChar(128)
+  claimedBy String? @map("claimed_by") @db.Uuid
+  version Int @default(0)
+  claimant User? @relation("WithdrawalClaimant",fields:[claimedBy],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  actions WithdrawalAction[]
+  reviewedBy String? @map("reviewed_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user User @relation("WithdrawalOwner",fields:[userId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  reviewer User? @relation("WithdrawalReviewer",fields:[reviewedBy],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  account PayoutAccount @relation(fields:[accountId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  @@unique([userId,idempotencyKey],map:"withdrawals_user_idempotency_key")
+  @@index([status,createdAt,id],map:"withdrawals_status_created_at_idx")
+  @@map("withdrawals")
+}
+model WebLoginTicket {
+  id String @id @db.VarChar(64)
+  userId String @map("user_id") @db.Uuid
+  tokenVersion Int @map("token_version")
+  role String @db.VarChar(20)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
+  user User @relation(fields:[userId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  @@index([expiresAt],map:"web_login_tickets_expiry_idx")
+  @@map("web_login_tickets")
+}
+
+model WithdrawalAction {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ withdrawalId String @map("withdrawal_id") @db.Uuid
+ actorId String @map("actor_id") @db.Uuid
+ action String @db.VarChar(20)
+ fromStatus String @map("from_status") @db.VarChar(20)
+ toStatus String @map("to_status") @db.VarChar(20)
+ version Int
+ reference String? @db.VarChar(128)
+ reason String? @db.VarChar(256)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+ withdrawal Withdrawal @relation(fields:[withdrawalId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+ actor User @relation(fields:[actorId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+ @@unique([withdrawalId,version],map:"withdrawal_actions_withdrawal_id_version_key")
+ @@map("withdrawal_actions")
+}
+model PaymentInbox {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ provider String @db.VarChar(40)
+ eventId String @map("event_id") @db.VarChar(128)
+ payloadHash String @map("payload_hash") @db.VarChar(64)
+ payload Json @db.JsonB
+ status String @default("pending") @db.VarChar(20)
+ attempts Int @default(0)
+ lastError String? @map("last_error") @db.VarChar(80)
+ nextAttemptAt DateTime @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+ processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
+ @@unique([provider,eventId],map:"payment_inbox_provider_event_id_key")
+ // Retry partial index and evidence trigger are maintained in SQL migrations.
+ @@map("payment_inbox")
+}
+model AuthRateLimit {
+ key String @db.VarChar(64)
+ windowStart BigInt @map("window_start")
+ attempts Int
+ @@id([key,windowStart])
+ @@index([windowStart],map:"auth_rate_limits_window_idx")
+ @@map("auth_rate_limits")
 }

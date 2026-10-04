@@ -1,30 +1,186 @@
 "use client";
-
 import Link from "next/link";
-import { ArrowDownToLine, ArrowRight, ArrowUpRight, BarChart3, CircleDollarSign,
-  Crown, ReceiptText, ShieldCheck, UsersRound, X } from "lucide-react";
+import {
+  ArrowDownToLine,
+  Download,
+  ArrowUpRight,
+  ShieldCheck,
+  ChevronRight,
+} from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { displayAmount, formatMoney } from "@/lib/money";
+import { AdminOperations } from "./admin-operations";
+import { WalletSummary } from "./wallet-summary";
+import { RefreshStatus } from "./live-refresh";
 import { exportAdminAudit } from "@/lib/admin-export";
-import { Skeleton, surface } from "./admin-dark-ui";
+import { Sheet } from "./agent-ui";
+import { WithdrawalPanel } from "./withdrawal-panel";
+import { Skeleton } from "./admin-dark-ui";
 import { useAdminMobile } from "./admin-mobile-context";
-
 export function AdminMobileHome() {
-  const { demo, all, day, loading, notify } = useAdminMobile();
-  const [withdrawOpen, setWithdrawOpen] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const { demo, all, day, loading, notify, refresh, revision, updatedAt } =
+    useAdminMobile();
+  const router = useRouter();
+  const [withdrawOpen, setWithdrawOpen] = useState(false),
+    [exporting, setExporting] = useState(false);
+  const amount = formatMoney(all?.platformTotalRevenue);
   async function download() {
     if (exporting) return;
     setExporting(true);
-    try { const count = await exportAdminAudit(demo); notify(`已导出 ${count} 笔订单的对账记录`); }
-    catch { notify("对账导出失败，请稍后重试"); }
-    finally { setExporting(false); }
+    try {
+      const count = await exportAdminAudit(demo);
+      notify(count === null ? "对账文件已生成" : `已导出 ${count} 笔演示订单`);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "导出失败，请重试");
+    } finally {
+      setExporting(false);
+    }
   }
-  return <>
-    <header className="flex items-center justify-between"><span className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#9FE870]/20 bg-[#1C3019] text-[#9FE870]"><Crown size={20} strokeWidth={1.6} /></span><span><span className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#9FE870]">Platform owner</span><span className="mt-1 block text-[13px] font-bold">超级管理端</span></span></span><span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[10px] text-[#AFC1A5]">老板账户</span></header>
-    <div className="mb-7 mt-10"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9FE870]">Capital overview</p><h1 className="mt-3 text-[29px] font-extrabold tracking-[-0.065em]">掌控全盘，清晰有数<span className="text-[#9FE870]">.</span></h1><p className="mt-2 text-[12px] text-[#8E9B8A]">平台资金与分润，每时每刻都看得见。</p></div>
-    <section aria-label="平台净收益池" className="relative overflow-hidden rounded-[30px] border border-[#9FE870]/12 bg-gradient-to-br from-[#162613] to-[#121E10] p-6"><span aria-hidden="true" className="absolute -right-16 -top-20 h-64 w-64 rounded-full border border-white/[0.06]" /><div className="relative flex items-center justify-between"><span className="text-[12px] font-semibold text-[#B6C9AD]">平台净收益池</span><span className="rounded-full border border-[#9FE870]/20 bg-[#9FE870]/10 px-2.5 py-1.5 text-[10px] font-bold text-[#9FE870]">固定 30%</span></div><div className="relative mt-9">{loading ? <Skeleton className="h-12 w-3/4" /> : <p className="whitespace-nowrap font-mono text-[clamp(30px,8.8vw,41px)] font-extrabold tracking-[-0.085em] text-[#F4F5F0]"><span className="mr-1.5 text-[.7em] text-[#AFC1A5]">¥</span>{all?.platformTotalRevenue ?? "—"}</p>}<p className="mt-3 text-[10px] text-[#859B7E]">累计已结算平台收益</p></div><div className="relative mt-8 grid grid-cols-2 gap-2.5"><button type="button" onClick={() => setWithdrawOpen(true)} className="flex h-12 items-center justify-center gap-1.5 rounded-full bg-[#9FE870] px-2 text-[11px] font-extrabold text-[#0A1408]">商户资金提现 <ArrowUpRight size={15} /></button><button type="button" onClick={download} disabled={exporting} className="flex h-12 items-center justify-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.06] px-2 text-[11px] font-bold text-[#F4F5F0] disabled:opacity-50"><ArrowDownToLine size={15} />{exporting ? "正在导出…" : "对账导出"}</button></div></section>
-    <section className="mt-9"><div className="mb-4 flex items-center justify-between"><h2 className="text-[18px] font-extrabold tracking-[-0.05em]">今日运行简报</h2><span className="flex items-center gap-1.5 text-[10px] text-[#8E9B8A]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#9FE870]" />UTC 今日</span></div><div className={surface + " flex items-center gap-4 p-5"}><span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.05] text-[#9FE870]"><CircleDollarSign size={23} strokeWidth={1.5} /></span><span className="min-w-0 flex-1"><span className="block text-[10px] text-[#8E9B8A]">今日平台抽成收入</span><span className="mt-2 block truncate font-mono text-[25px] font-bold tracking-[-0.07em] text-[#9FE870]">{loading ? <Skeleton className="h-7 w-32" /> : "¥" + (day?.platformTotalRevenue ?? "0.00")}</span></span><ArrowUpRight size={17} className="text-[#70836B]" /></div><div className="mt-3 grid grid-cols-2 gap-3"><div className={surface + " p-4"}><ReceiptText size={17} strokeWidth={1.5} className="text-[#9FE870]" /><p className="mt-5 font-mono text-[27px] font-bold tracking-[-0.07em]">{day?.paidOrderCount ?? "—"}</p><p className="mt-1.5 text-[10px] text-[#8E9B8A]">今日全网成单</p></div><div className={surface + " p-4"}><UsersRound size={17} strokeWidth={1.5} className="text-[#9FE870]" /><p className="mt-5 font-mono text-[27px] font-bold tracking-[-0.07em]">{day?.activePromoterCount ?? "—"}</p><p className="mt-1.5 text-[10px] text-[#8E9B8A]">活跃出单代理</p></div></div></section>
-    <section className="mt-9"><h2 className="mb-3 text-[18px] font-extrabold tracking-[-0.05em]">全网规模</h2><div className={surface + " space-y-4 p-5"}><div className="flex items-center justify-between text-[12px]"><span className="flex items-center gap-2 text-[#8E9B8A]"><BarChart3 size={15} />GMV 总成交</span><span className="font-mono font-bold">¥{all?.totalGmv ?? "—"}</span></div><div className="h-px bg-white/[0.06]" /><div className="flex items-center justify-between text-[12px]"><span className="flex items-center gap-2 text-[#8E9B8A]"><UsersRound size={15} />代理奖金池</span><span className="font-mono font-bold">¥{all?.agentCommissionPool ?? "—"}</span></div></div><Link href="/admin/mobile/audit/" className="mt-4 flex h-11 items-center justify-center gap-2 rounded-full border border-white/[0.08] text-[11px] font-bold text-[#D6E6CE]">查看全网分润流水 <ArrowRight size={14} /></Link></section><p className="mt-10 flex items-center justify-center gap-1.5 text-[10px] text-[#6F806C]"><ShieldCheck size={13} />严格二级分润 · 平台统一结算</p>
-    {withdrawOpen && <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/65 px-2" onClick={() => setWithdrawOpen(false)}><div role="dialog" aria-modal="true" aria-label="商户资金提现" onClick={(event) => event.stopPropagation()} className="mb-2 w-full max-w-md rounded-[30px] border border-white/[0.08] bg-[#182217] p-6 pb-[max(26px,env(safe-area-inset-bottom))]"><div className="flex items-center justify-between"><h2 className="text-[18px] font-bold">商户资金提现</h2><button type="button" aria-label="关闭" onClick={() => setWithdrawOpen(false)}><X size={19} /></button></div><p className="mt-5 rounded-2xl border border-white/[0.08] bg-[#101810] p-5 text-[12px] leading-6 text-[#9DAC98]">商户提现接口尚未接入。平台净收益与账目仍可查看，对账记录可以导出。</p><button type="button" onClick={() => setWithdrawOpen(false)} className="mt-5 h-12 w-full rounded-full bg-[#9FE870] text-[12px] font-extrabold text-[#0A1408]">知道了</button></div></div>}
-  </>;
+  return (
+    <>
+      <header className="flex items-center justify-between border-b border-[#262626] pb-5">
+        <div>
+          <span className="text-lg font-bold tracking-tight">
+            CONSOLE<span className="ml-1 text-[#C5FF59]">▰</span>
+          </span>
+          <p className="mt-1 text-xs text-[#929292]">老板总控 · 超级管理员</p>
+        </div>
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252525] text-xs font-semibold">
+          老板
+        </span>
+      </header>
+      <section aria-label="平台净收益池" className="py-7">
+        <h1 className="text-sm font-normal text-[#999]">
+          平台净收益{" "}
+          <span className="ml-2 rounded border border-[#333] px-1.5 py-0.5 font-mono text-[11px] text-white">
+            30%
+          </span>
+        </h1>
+        {loading ? (
+          <Skeleton className="mt-4 h-12 w-64" />
+        ) : (
+          <p
+            className="financial-number mt-4 font-mono font-semibold leading-tight"
+            style={{
+              fontSize: `clamp(22px, ${Math.min(10.5, 118 / amount.length)}vw, 44px)`,
+            }}
+          >
+            <span className="mr-1 text-[.7em] text-[#888]">¥</span>
+            {amount}
+          </p>
+        )}
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-[#929292]">
+          <ShieldCheck size={13} className="text-[var(--positive)]" />
+          累计净分成 · 已扣除退款冲正
+        </p>
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            className="exchange-primary"
+            onClick={() => setWithdrawOpen(true)}
+          >
+            <ArrowDownToLine size={16} />
+            商户提现
+          </button>
+          <button
+            className="exchange-secondary"
+            onClick={download}
+            disabled={exporting}
+          >
+            <Download size={16} />
+            {exporting ? "正在导出…" : "对账导出"}
+          </button>
+        </div>
+      </section>
+      <WalletSummary demo={demo} revision={revision} />
+      <div className="mt-3">
+        <RefreshStatus
+          demo={demo}
+          at={updatedAt}
+          busy={loading}
+          onRefresh={refresh}
+        />
+      </div>
+      <section className="mt-6 border-y border-[#262626] py-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">今日运行</h2>
+          <span className="text-[11px] text-[#777]">UTC 今日</span>
+        </div>
+        <div className="mt-5">
+          <p className="text-xs text-[#929292]">平台抽成收入</p>
+          <p className="financial-number mt-2 font-mono text-2xl font-semibold text-[var(--positive)]">
+            {loading ? "—" : displayAmount(day?.platformTotalRevenue)}
+          </p>
+        </div>
+        <div className="mt-5 grid grid-cols-2 divide-x divide-[#292929]">
+          <div>
+            <p className="text-xs text-[#929292]">全网成单</p>
+            <p className="mt-2 font-mono text-xl">
+              {day?.paidOrderCount ?? "—"}
+              <span className="ml-2 text-xs text-[#888]">笔</span>
+            </p>
+          </div>
+          <div className="pl-5">
+            <p className="text-xs text-[#929292]">活跃出单代理</p>
+            <p className="mt-2 font-mono text-xl">
+              {day?.activePromoterCount ?? "—"}
+              <span className="ml-2 text-xs text-[#888]">人</span>
+            </p>
+          </div>
+        </div>
+      </section>
+      <div className="mt-6">
+        <AdminOperations
+          demo={demo}
+          refreshKey={revision}
+          onSelect={(focus) =>
+            router.push(
+              "/admin/mobile/treasury/?" +
+                new URLSearchParams({
+                  tab: focus.tab,
+                  ...(focus.status ? { status: focus.status } : {}),
+                  ...(focus.eventStatus
+                    ? { eventStatus: focus.eventStatus }
+                    : {}),
+                }),
+            )
+          }
+        />
+      </div>
+      <section className="mt-7">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-semibold">全网规模</h2>
+          <Link href="/admin/mobile/team/" aria-label="查看代理网络">
+            <ArrowUpRight size={17} />
+          </Link>
+        </div>
+        {[
+          { label: "GMV 净成交", value: all?.totalGmv },
+          { label: "代理净分成", value: all?.agentCommissionPool },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="flex items-center justify-between gap-3 border-b border-[#262626] py-4 text-sm"
+          >
+            <span className="text-[#929292]">{item.label}</span>
+            <strong className="break-all text-right font-mono text-sm font-medium">
+              {displayAmount(item.value)}
+            </strong>
+          </div>
+        ))}
+        <Link
+          href="/admin/mobile/audit/"
+          className="mt-4 flex min-h-11 items-center justify-between text-sm"
+        >
+          查看全网分账
+          <ChevronRight size={16} />
+        </Link>
+      </section>
+      {withdrawOpen && (
+        <Sheet title="商户资金提现" onClose={() => setWithdrawOpen(false)}>
+          <WithdrawalPanel scope="admin" demo={demo} onComplete={refresh} />
+        </Sheet>
+      )}
+    </>
+  );
 }

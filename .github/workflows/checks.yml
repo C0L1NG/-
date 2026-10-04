@@ -27,23 +27,46 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - run: python -m pip install -r python_backend/requirements-dev.txt
+      - run: python -m ruff check python_backend scripts/configure-miniprogram.py
+      - run: python -m ruff format --check python_backend scripts/configure-miniprogram.py
       - run: python python_backend/tools/generate_ts_contracts.py --check
+      - run: python python_backend/tools/generate_openapi.py --check
       - run: python -m pytest -q
         working-directory: python_backend
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "11.19.0"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir web build
+      - run: python python_backend/tools/check_bff_integration.py
+
   typescript:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/commission_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
       - uses: pnpm/action-setup@v4
         with:
-          version: '11.19.0'
+          version: "11.19.0"
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm format:check
       - run: pnpm --dir web typecheck
+      - run: pnpm --dir web build
+      - run: pnpm test:tooling
+      - run: node scripts/prepare-showcase.mjs
+      - run: node scripts/sync-showcase.mjs --check
+      - run: pnpm --dir showcase-site install --ignore-workspace --frozen-lockfile
+      - run: pnpm --dir showcase-site build
