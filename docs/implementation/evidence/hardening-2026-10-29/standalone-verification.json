@@ -1,0 +1,9 @@
+{
+  "runtime": "Next standalone with copied public/static assets",
+  "statuses": {
+    "/login": 200,
+    "/fonts/geist-latin.woff2": 200,
+    "/api/admin/overview": 401
+  },
+  "passed": true
+}

@@ -72,94 +72,66 @@ export function AgentHome() {
   const balance = hidden ? "••••••" : formatMoney(overview?.balance);
   return (
     <>
-      <header className="flex items-center justify-between pb-5">
-        <div className="flex items-center gap-2.5">
-          <span
-            aria-hidden="true"
-            className="grid h-8 w-8 grid-cols-2 gap-1 rounded-md border border-[var(--agent-line)] p-1.5"
-          >
-            <i className="bg-[var(--agent-text)]" />
-            <i className="bg-[var(--agent-muted)]" />
-            <i className="col-span-2 bg-[var(--agent-text)]" />
-          </span>
-          <span className="text-lg font-bold tracking-tight">
-            PARTNER
-            <span className="ml-2 text-xs font-normal text-[var(--agent-muted)]">
-              合伙人
-            </span>
-          </span>
-        </div>
+      <h1 className="sr-only">我的账户</h1>
+      <header className="partner-header">
         <Link
           href="/agent/profile/"
           aria-label="打开我的账户"
-          className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[var(--agent-soft)] text-xs font-semibold"
+          className="partner-identity"
         >
-          {overview?.avatarUrl ? (
-            <img
-              src={overview.avatarUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            name.slice(0, 2)
-          )}
+          <span className="partner-avatar">
+            {overview?.avatarUrl ? (
+              <img
+                src={overview.avatarUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              name.slice(0, 1)
+            )}
+          </span>
+          <span>
+            <span className="partner-greeting">欢迎回来</span>
+            <strong>{name}</strong>
+          </span>
+        </Link>
+        <Link href="/agent/profile/" className="partner-level">
+          {level}
+          <ChevronRight size={12} />
         </Link>
       </header>
-      <div className="flex items-center gap-5 border-b border-[var(--agent-line)]">
-        <h1 className="border-b-2 border-[var(--agent-text)] py-3 text-base font-semibold">
-          账户总览
-        </h1>
-        <Link
-          href="/agent/ledger/"
-          className="py-3 text-sm text-[var(--agent-muted)]"
-        >
-          资金账单
-        </Link>
-        <span className="ml-auto text-xs text-[var(--agent-muted)]">CNY</span>
-      </div>
-      <section aria-label="我的可提现佣金" className="py-7">
-        <div className="flex items-center gap-2 text-[13px] text-[var(--agent-muted)]">
-          可提现佣金
+      <section aria-label="我的可提现佣金" className="partner-balance">
+        <div className="flex items-center justify-between text-[13px] text-[var(--agent-muted)]">
+          <span>可提现佣金</span>
           <button
             type="button"
             onClick={() => setHidden(!hidden)}
             aria-label={hidden ? "显示金额" : "隐藏金额"}
             aria-pressed={hidden}
-            className="-my-2 flex h-9 w-9 items-center justify-center rounded-md hover:bg-[var(--agent-soft)]"
+            className="partner-eye"
           >
-            {hidden ? <EyeOff size={16} /> : <Eye size={16} />}
+            {hidden ? <EyeOff size={17} /> : <Eye size={17} />}
           </button>
         </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-2xl text-[var(--agent-muted)]">¥</span>
+        <div className="partner-amount">
+          <span>¥</span>
           {loading ? (
             <Skeleton className="h-12 w-52" />
           ) : (
             <strong
-              className="financial-number min-w-0 font-mono leading-tight"
+              className="financial-number"
               style={{
-                fontSize: `clamp(22px, ${Math.min(10.5, 118 / balance.length)}vw, 46px)`,
+                fontSize: `clamp(22px, ${Math.min(11.5, 118 / balance.length)}vw, 48px)`,
               }}
             >
               {balance}
             </strong>
           )}
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-4 text-xs text-[var(--agent-muted)]">
-          <div>
-            <span>今日预计 · UTC</span>
-            <strong className="mt-2 block break-all font-mono text-sm font-medium text-[var(--positive)]">
-              {displayAmount(overview?.todayEstimatedEarnings, hidden)}
-            </strong>
-          </div>
-          <div>
-            <span>历史净收益</span>
-            <strong className="mt-2 block break-all font-mono text-sm font-medium text-[var(--agent-text)]">
-              {displayAmount(overview?.totalEarned, hidden)}
-            </strong>
-          </div>
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-3">
+        <p className="partner-currency">
+          人民币账户 <span>·</span> CNY
+        </p>
+        <div className="mt-5 grid grid-cols-2 gap-2.5">
           <button
             type="button"
             className="exchange-primary"
@@ -176,43 +148,44 @@ export function AgentHome() {
           </Link>
         </div>
       </section>
-      <section
-        aria-label="账户快捷入口"
-        className="grid grid-cols-3 border-y border-[var(--agent-line)] py-5"
-      >
+      <section aria-label="收益概览" className="partner-stats">
+        <div>
+          <span>今日预计 · UTC</span>
+          <strong
+            className={
+              overview?.todayEstimatedEarnings?.startsWith("-")
+                ? "text-[var(--negative)]"
+                : "text-[var(--positive)]"
+            }
+          >
+            {displayAmount(overview?.todayEstimatedEarnings, hidden)}
+          </strong>
+        </div>
+        <div>
+          <span>历史净收益</span>
+          <strong>{displayAmount(overview?.totalEarned, hidden)}</strong>
+        </div>
+      </section>
+      <section aria-label="账户快捷入口" className="partner-shortcuts">
         {[
           { href: "/agent/team/", label: "直属团队", Icon: UsersRound },
           { href: "/agent/progress/", label: "收益分析", Icon: ArrowRight },
           { href: "/agent/withdrawals/", label: "提现记录", Icon: History },
         ].map(({ href, label, Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className="flex min-h-16 flex-col items-center justify-center gap-3 text-xs transition-opacity hover:opacity-60"
-          >
-            <Icon size={22} strokeWidth={1.5} />
+          <Link key={href} href={href}>
+            <span>
+              <Icon size={20} strokeWidth={1.6} />
+            </span>
             {label}
           </Link>
         ))}
       </section>
-      <Link
-        href="/agent/profile/"
-        className="my-5 flex items-center justify-between rounded-lg border border-[var(--agent-line)] px-4 py-3.5 text-sm"
-      >
-        <span>
-          <strong className="font-medium">{level}</strong>
-          <span className="ml-3 font-mono text-xs text-[var(--agent-muted)]">
-            自身分润 {overview?.currentCommissionRatePercent ?? "—"}%
-          </span>
-        </span>
-        <ChevronRight size={15} className="text-[var(--agent-muted)]" />
-      </Link>
-      <section aria-label="最新分润" className="mt-7">
-        <div className="flex items-center justify-between border-b border-[var(--agent-line)] pb-3">
-          <h2 className="text-lg font-semibold">最新分润</h2>
+      <section aria-label="最新分润" className="partner-activity">
+        <div className="flex items-center justify-between pb-2">
+          <h2 className="text-[18px] font-semibold tracking-tight">近期活动</h2>
           <Link
             href="/agent/ledger/"
-            className="flex min-h-9 items-center gap-1 text-xs text-[var(--agent-muted)]"
+            className="flex min-h-11 items-center gap-1 text-xs text-[var(--agent-muted)]"
           >
             全部明细
             <ChevronRight size={14} />
@@ -242,7 +215,7 @@ export function AgentHome() {
           </p>
         )}
       </section>
-      <div className="mt-4">
+      <div className="mt-5">
         <RefreshStatus
           demo={demo}
           at={updatedAt}
@@ -259,7 +232,12 @@ export function AgentHome() {
       )}
       {withdrawOpen && (
         <Sheet title="申请提现" onClose={() => setWithdrawOpen(false)}>
-          <WithdrawalPanel demo={demo} hidden={hidden} onComplete={refresh} />
+          <WithdrawalPanel
+            demo={demo}
+            hidden={hidden}
+            refreshKey={revision}
+            onComplete={refresh}
+          />
         </Sheet>
       )}
     </>

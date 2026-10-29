@@ -7,7 +7,7 @@ import { useAdminMobile } from "./admin-mobile-context";
 import { AdminTreasury } from "./admin-treasury";
 import type { TreasuryFocus } from "./admin-operations";
 export function AdminMobileTreasury() {
-  const { demo, refresh } = useAdminMobile();
+  const { demo, refresh, revision } = useAdminMobile();
   const params = useSearchParams();
   const tab = params.get("tab"),
     status = params.get("status"),
@@ -33,7 +33,12 @@ export function AdminMobileTreasury() {
         <ArrowLeft size={16} />
         返回大盘
       </Link>
-      <AdminTreasury demo={demo} focus={focus} onComplete={refresh} />
+      <AdminTreasury
+        demo={demo}
+        focus={focus}
+        refreshKey={revision}
+        onComplete={refresh}
+      />
     </>
   );
 }

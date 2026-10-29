@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-30",
+  "python": "3.14.3",
+  "database": "disposable PostgreSQL 16",
+  "baseline": "0a4342e plus current uncommitted working tree",
+  "tests": {
+    "python_passed": 128,
+    "python_skipped": 0,
+    "javascript_native_passed": 37,
+    "javascript_native_skipped": 0
+  },
+  "checks": [
+    "TypeScript",
+    "Ruff",
+    "Pydantic TS contract",
+    "OpenAPI",
+    "showcase 51 shared files"
+  ],
+  "confirmed_findings": [
+    "R6-01",
+    "R6-02",
+    "R6-03",
+    "R6-04"
+  ],
+  "source_sha256": {
+    "python_backend/app/security.py": "342ff20794d921b1390708704f05e3cae00549d8626d2927980881883aa01e7c",
+    "python_backend/app/db.py": "d1f1d86718a75f9cb8a74f9d5d262c91b7e6dd31dc617d3e17e45e433e13853c",
+    "python_backend/app/payout_accounts.py": "ba4119701b00fd5a60412a18b47514aeb5c4ff827193a56f8e8ce86f4a364496",
+    "python_backend/app/payments.py": "a566264e5bc5c42dfeaeca481075df32c8c1698f7428ead80c3237416f2c6707",
+    "python_backend/app/schema_inventory.py": "8dd5c41f619b594760cbf9bd64e066b642c01f778bb8eadd6a1f4b4547f4e0df",
+    "web/components/admin-network.tsx": "34c63711034c4c3fd119018f7e18a2e0ff3a5074526568cf223a0bad5ad934f5"
+  },
+  "production_changes": false
+}

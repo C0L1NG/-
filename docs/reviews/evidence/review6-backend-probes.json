@@ -1,0 +1,38 @@
+{
+  "disabled_trigger": {
+    "trigger": "wallet_movements_append_only",
+    "state": "D",
+    "inventory_differences": []
+  },
+  "one_connection_write": {
+    "status": 500,
+    "response": {
+      "code": "INTERNAL_SERVER_ERROR",
+      "message": "Service is temporarily unavailable"
+    },
+    "elapsed_seconds": 1.063
+  },
+  "invalid_refund_poison": {
+    "sequence": [
+      {
+        "step": "invalid_refund",
+        "error": "INVALID_PAYMENT_REFERENCE"
+      },
+      {
+        "step": "valid_refund_before_paid",
+        "error": "ORDER_NOT_PAID"
+      },
+      {
+        "step": "paid",
+        "error": "dbapi"
+      },
+      {
+        "step": "retry_valid_refund",
+        "error": "ORDER_NOT_PAID"
+      }
+    ],
+    "payment_status": "pending",
+    "refund_pending": true,
+    "balance": "0.00"
+  }
+}

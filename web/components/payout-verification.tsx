@@ -9,11 +9,14 @@ import type {
 } from "@/lib/api-contract.generated";
 export function PayoutVerification({
   onComplete,
+  refreshKey = 0,
 }: {
+  refreshKey?: number;
   onComplete?: () => void;
 }) {
   const [selected, setSelected] = useState<PendingAccount | null>(null);
   const [reference, setReference] = useState("");
+  const [decision, setDecision] = useState<"verify" | "reject">("verify");
   const [page, setPage] = useState(1),
     [revision, setRevision] = useState(0);
   const [data, setData] = useState<PendingAccountPage | null>(null);
@@ -34,15 +37,18 @@ export function PayoutVerification({
         if (!controller.signal.aborted) setError(e.message);
       });
     return () => controller.abort();
-  }, [page, revision]);
+  }, [page, revision, refreshKey]);
   async function verify(item: PendingAccount) {
-    if (reference.trim().length < 8) return;
+    if (reference.trim().length < (decision === "verify" ? 8 : 1)) return;
     setBusy(item.id);
     setError("");
     try {
-      await apiPost(`/api/admin/payout-accounts/${item.id}/verify`, {
-        verificationReference: reference.trim(),
-      });
+      await apiPost(
+        `/api/admin/payout-accounts/${item.id}/${decision}`,
+        decision === "verify"
+          ? { verificationReference: reference.trim() }
+          : { reason: reference.trim() },
+      );
       setRevision((x) => x + 1);
       setSelected(null);
       setReference("");
@@ -60,7 +66,7 @@ export function PayoutVerification({
         核验真实账户归属后方可开放提现。账户标识来自支付保管服务。
       </p>
       {error ? (
-        <p role="alert" className="text-sm text-[var(--positive)]">
+        <p role="alert" className="text-sm text-[var(--negative)]">
           {error}
           <button onClick={() => setRevision((x) => x + 1)} className="ml-3">
             重试
@@ -82,12 +88,26 @@ export function PayoutVerification({
                 disabled={Boolean(busy)}
                 onClick={() => {
                   setSelected(item);
+                  setDecision("verify");
                   setReference("");
                   setError("");
                 }}
                 className="mt-3 rounded-full bg-[var(--action-bg)] px-4 py-2 font-bold text-[var(--action-text)]"
               >
                 核验通过
+              </button>
+              <button
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={() => {
+                  setSelected(item);
+                  setDecision("reject");
+                  setReference("");
+                  setError("");
+                }}
+                className="ml-3 min-h-11 rounded-full px-4 text-[var(--negative)]"
+              >
+                驳回申请
               </button>
             </div>
           ))}
@@ -110,7 +130,7 @@ export function PayoutVerification({
       )}
       {selected && (
         <Sheet
-          title="核验收款账户"
+          title={decision === "verify" ? "核验收款账户" : "驳回账户申请"}
           onClose={() => {
             if (!busy) setSelected(null);
           }}
@@ -131,16 +151,20 @@ export function PayoutVerification({
               {selected.accountReference}
             </p>
             <label className="block text-sm">
-              核验凭据
+              {decision === "verify" ? "核验凭据" : "驳回原因"}
               <input
                 autoFocus
                 required
-                minLength={8}
-                maxLength={128}
+                minLength={decision === "verify" ? 8 : 1}
+                maxLength={decision === "verify" ? 128 : 256}
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
                 className="mt-2 h-12 w-full rounded-lg border border-[#333] bg-[#111] px-3"
-                placeholder="至少 8 个字符"
+                placeholder={
+                  decision === "verify"
+                    ? "至少 8 个字符"
+                    : "说明需要补充或核验的信息"
+                }
               />
             </label>
             {error && (
@@ -152,7 +176,11 @@ export function PayoutVerification({
               disabled={Boolean(busy)}
               className="exchange-primary w-full"
             >
-              {busy ? "正在保存…" : "确认已核验归属"}
+              {busy
+                ? "正在保存…"
+                : decision === "verify"
+                  ? "确认已核验归属"
+                  : "确认驳回"}
             </button>
           </form>
         </Sheet>

@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-30",
+  "scope": "local workspace, no production migration/push/deployment",
+  "python": "3.14.3",
+  "postgresql": "16 disposable container",
+  "backendTests": {
+    "passed": 128,
+    "skipped": 0,
+    "databaseRequired": true
+  },
+  "javascriptNativeTests": {
+    "passed": 37,
+    "skipped": 0
+  },
+  "checks": {
+    "webProductionBuild": true,
+    "showcaseProductionBuild": true,
+    "typescript": true,
+    "ruff": true,
+    "prettier": true,
+    "apiContracts": true,
+    "designTokens": true,
+    "showcaseSharedFiles": 51
+  },
+  "evidence": [
+    "bff-verification.json",
+    "ui-verification.json",
+    "restore-verification.json",
+    "standalone-verification.json",
+    "capacity-verification.json"
+  ],
+  "notExecuted": [
+    "remote CI matrix",
+    "Docker image builds",
+    "production migration",
+    "real WeChat device acceptance",
+    "real payment channel acceptance"
+  ]
+}

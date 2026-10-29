@@ -1,7 +1,12 @@
 "use client";
+import {
+  lookupWithdrawalIntent,
+  parseWithdrawalIntent,
+  type WithdrawalIntent,
+} from "@/lib/withdrawal-intent";
 
-import { useEffect, useState } from "react";
-import { apiPost } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { AgentApiError, apiPost } from "@/lib/api";
 import { WithdrawalHistory } from "./withdrawal-history";
 import { displayAmount } from "@/lib/money";
 import type {
@@ -19,11 +24,13 @@ export function WithdrawalPanel({
   demo = false,
   onComplete,
   hidden = false,
+  refreshKey = 0,
 }: {
   scope?: "agent" | "admin";
   demo?: boolean;
   onComplete?: () => void;
   hidden?: boolean;
+  refreshKey?: number;
 }) {
   const [accounts, setAccounts] = useState<PayoutAccountData[]>([]),
     [wallet, setWallet] = useState<WalletState | null>(null);
@@ -34,15 +41,51 @@ export function WithdrawalPanel({
     [error, setError] = useState(""),
     [success, setSuccess] = useState("");
   const [revision, setRevision] = useState(0);
-  const [key, setKey] = useState("");
+  const [intent, setIntent] = useState<WithdrawalIntent | null>(null);
+  const [storageKey, setStorageKey] = useState("");
+  const activeStorageKey = useRef("");
+  const [walletFailed, setWalletFailed] = useState(false);
+  useEffect(
+    () => () => {
+      activeStorageKey.current = "";
+    },
+    [],
+  );
   useEffect(() => {
-    setKey(crypto.randomUUID());
-  }, []);
+    if (demo || !storageKey.startsWith(`withdrawal-intent:${scope}:`)) return;
+    const pending = parseWithdrawalIntent(
+      window.sessionStorage.getItem(storageKey),
+    );
+    setIntent(pending);
+    setSuccess("");
+    if (!pending) {
+      setAmount("");
+      setError("");
+      return;
+    }
+    setIntent(pending);
+    setAmount(pending.amount);
+    setAccountId(pending.accountId);
+    setError("上次申请结果尚未确认，请继续核对；确认前请勿新建申请。");
+    const controller = new AbortController();
+    lookupWithdrawalIntent<WithdrawalData>(scope, pending, controller.signal)
+      .then((result) => {
+        if (!result || controller.signal.aborted) return;
+        window.sessionStorage.removeItem(storageKey);
+        setIntent(null);
+        setAmount("");
+        setSuccess(`已找回申请：¥${result.amount}，请在提现记录查看处理状态。`);
+        setError("");
+        setRevision((value) => value + 1);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [demo, scope, storageKey]);
   useEffect(() => {
     if (demo) return;
     const controller = new AbortController();
     setLoading(true);
-    setWallet(null);
+    setWalletFailed(false);
     Promise.all([
       fetch(`/api/${scope}/payout-accounts`, {
         signal: controller.signal,
@@ -56,43 +99,89 @@ export function WithdrawalPanel({
       .then(async ([a, b]) => {
         if (!a.ok || !b.ok) throw new Error("无法加载收款账户或余额");
         const [x, y] = await Promise.all([a.json(), b.json()]);
+        if (controller.signal.aborted) return;
+        const owner = b.headers.get("x-account-id");
+        if (!owner || !/^[a-f0-9-]{36}$/i.test(owner))
+          throw new Error("暂时无法读取账户，请刷新重试。");
+        const key = `withdrawal-intent:${scope}:${owner}`;
+        if (activeStorageKey.current !== key) setBusy(false);
+        activeStorageKey.current = key;
+        setStorageKey(key);
         setAccounts(x.items);
-        setAccountId(
-          x.items.find((i: PayoutAccountData) => i.verified)?.id ?? "",
+        setAccountId((old) =>
+          x.items.some(
+            (item: PayoutAccountData) => item.id === old && item.verified,
+          )
+            ? old
+            : x.items.find((i: PayoutAccountData) => i.verified)?.id || "",
         );
         setWallet(y);
       })
       .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message);
+        if (!controller.signal.aborted) {
+          setWalletFailed(true);
+          setError(e.message);
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [demo, scope, revision]);
+  }, [demo, scope, revision, refreshKey]);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSuccess("");
+    if (!storageKey) {
+      setError("请等待账户加载完成后重试。");
+      return;
+    }
     if (!/^\d{1,16}(\.\d{1,2})?$/.test(amount) || !accountId) {
       setError("请输入最多两位小数的金额，并选择已验证账户");
       return;
     }
+    const pending = intent ?? {
+      amount,
+      accountId,
+      idempotencyKey: crypto.randomUUID(),
+    };
+    // Persist the original payload before sending. Unknown results always reuse it.
+    window.sessionStorage.setItem(storageKey, JSON.stringify(pending));
+    setIntent(pending);
     setBusy(true);
     try {
-      const result = await apiPost<WithdrawalData>(
-        `/api/${scope}/withdrawals`,
-        { amount, accountId, idempotencyKey: key },
-      );
+      const existing = intent
+        ? await lookupWithdrawalIntent<WithdrawalData>(scope, pending)
+        : null;
+      const result =
+        existing ??
+        (await apiPost<WithdrawalData>(`/api/${scope}/withdrawals`, pending));
+      window.sessionStorage.removeItem(storageKey);
+      if (activeStorageKey.current !== storageKey) return;
       setSuccess(`申请已提交：¥${result.amount}，金额已冻结，等待审核。`);
-      setKey(crypto.randomUUID());
+      setIntent(null);
       setAmount("");
       setRevision((x) => x + 1);
       onComplete?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "申请失败，请重试");
+      if (
+        e instanceof AgentApiError &&
+        e.status >= 400 &&
+        e.status < 500 &&
+        e.status !== 408 &&
+        e.status !== 429 &&
+        e.code !== "IDEMPOTENCY_CONFLICT"
+      ) {
+        window.sessionStorage.removeItem(storageKey);
+        if (activeStorageKey.current !== storageKey) return;
+        setIntent(null);
+        setError(e.message);
+      } else if (activeStorageKey.current === storageKey)
+        setError(
+          "申请结果尚未确认。请点击核对结果，系统会使用原申请继续确认。",
+        );
     } finally {
-      setBusy(false);
+      if (activeStorageKey.current === storageKey) setBusy(false);
     }
   }
   if (demo)
@@ -101,7 +190,7 @@ export function WithdrawalPanel({
         公开演示不提交提现。正式账户申请后会冻结对应余额，审核付款完成后记录实际流水；驳回会解除冻结。
       </p>
     );
-  if (loading)
+  if (loading && !wallet)
     return (
       <p className="text-sm text-[var(--agent-muted,#929292)]">
         正在核对余额与收款账户…
@@ -130,6 +219,7 @@ export function WithdrawalPanel({
           收款账户
           <select
             value={accountId}
+            disabled={Boolean(intent)}
             onChange={(e) => setAccountId(e.target.value)}
             className={field + " mt-2"}
           >
@@ -154,6 +244,7 @@ export function WithdrawalPanel({
             required
             inputMode="decimal"
             value={amount}
+            readOnly={Boolean(intent)}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
             className={field + " mt-2 font-mono"}
@@ -162,7 +253,11 @@ export function WithdrawalPanel({
         {error && (
           <p
             role="alert"
-            className="text-sm text-[var(--agent-accent-text,#F5F5F5)]"
+            className={
+              intent
+                ? "text-sm text-[var(--warning)]"
+                : "text-sm text-[var(--negative)]"
+            }
           >
             {error}
             <button
@@ -184,17 +279,25 @@ export function WithdrawalPanel({
         )}
         <button
           disabled={
-            busy || !accountId || !wallet || wallet.debtBalance !== "0.00"
+            busy ||
+            loading ||
+            walletFailed ||
+            (!intent &&
+              (!accountId || !wallet || wallet.debtBalance !== "0.00"))
           }
           className={primary}
         >
-          {busy ? "正在提交…" : "提交提现申请"}
+          {busy ? "正在核对…" : intent ? "核对上次申请结果" : "提交提现申请"}
         </button>
         <p className="text-xs leading-5 text-[var(--agent-muted,#929292)]">
           申请成功不代表渠道付款完成。请在提现记录中查看处理状态。
         </p>
       </form>
-      <WithdrawalHistory scope={scope} hidden={hidden} />
+      <WithdrawalHistory
+        scope={scope}
+        hidden={hidden}
+        refreshKey={revision + refreshKey}
+      />
     </div>
   );
 }

@@ -1,0 +1,7 @@
+{
+  "scenario": "page 2 resolves before older page 1 request",
+  "currentPage": 2,
+  "displayedRecord": "page-1-record",
+  "displayedBalance": "100.00",
+  "staleResponseOverwroteCurrentPage": true
+}

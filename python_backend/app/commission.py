@@ -8,6 +8,7 @@ from functools import lru_cache
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from .errors import APIError
 from .models import (
     CommissionLog,
     CommissionRole,
@@ -82,6 +83,8 @@ async def process_order_commission(
 async def settle_locked_order(session: AsyncSession, order: Order) -> dict:
     """Caller owns the order row lock and transaction, including verified payment."""
     order_id = str(order.id)
+    if order.refund_pending:
+        raise APIError(409, "REFUND_REVIEW_REQUIRED")
     if order.settlement_status == SettlementStatus.SETTLED:
         return {"status": "already_settled", "orderId": order_id}
     if order.payment_status != PaymentStatus.PAID:

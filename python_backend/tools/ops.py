@@ -105,9 +105,11 @@ async def run(args):
             print(f"Payment events attempted: {result['attempted']}; failures: {result['failed']}")
             return 1 if result["failed"] else 0
         elif args.command == "reconcile":
+            from app.operations import persist_reconciliation
             from app.reconciliation import reconcile
 
-            mismatches = await reconcile(factory)
+            observed_at, mismatches = await reconcile(factory, with_observed_at=True)
+            await persist_reconciliation(factory, mismatches, observed_at)
             for item in mismatches:
                 print(item)
             print(f"Reconciliation mismatches: {len(mismatches)}")

@@ -1,0 +1,22 @@
+{
+  "gateway": "real Next -> FastAPI -> PostgreSQL",
+  "firstBrowser": {
+    "failedLogins": 20,
+    "nextStatus": 429
+  },
+  "secondBrowser": {
+    "loginStatus": 200,
+    "overviewStatus": 200
+  },
+  "tokenInBrowserJson": false,
+  "httpOnlyCookie": true,
+  "walletIdentityHeaderForwarded": true,
+  "utf8BodyLimitStatus": 413,
+  "recoveryWorkerFirstCycle": true,
+  "logout": {
+    "normalRevocation": true,
+    "invalidOriginRejected": true,
+    "upstreamOutageClearsBothRoleCookies": true,
+    "protectedRoutesAfterLogout": 401
+  }
+}

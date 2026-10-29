@@ -1,0 +1,20 @@
+[
+  {
+    "role": "agent",
+    "logout_status": 200,
+    "revoked_old_token_status": 401,
+    "ticket_after_logout_status": 200,
+    "exchange_after_logout_status": 200,
+    "new_token_version": 1,
+    "new_access_after_logout_status": 200
+  },
+  {
+    "role": "admin",
+    "logout_status": 200,
+    "revoked_old_token_status": 401,
+    "ticket_after_logout_status": 200,
+    "exchange_after_logout_status": 200,
+    "new_token_version": 1,
+    "new_access_after_logout_status": 200
+  }
+]

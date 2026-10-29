@@ -1,0 +1,63 @@
+{
+  "refund_before_payment": {
+    "refundFirst": {
+      "http": 409,
+      "body": {
+        "code": "ORDER_NOT_PAID"
+      }
+    },
+    "paymentSecond": {
+      "http": 200,
+      "body": {
+        "status": "settled",
+        "orderId": "f5f19608-b481-4b22-89cf-4ad6790db640",
+        "platformAmount": "30.00",
+        "bonusPool": "70.00",
+        "promoterAmount": "70.00",
+        "parentAmount": null
+      }
+    },
+    "beforeRetry": {
+      "refundInboxStatus": "failed",
+      "refundLastError": "ORDER_NOT_PAID",
+      "balance": "70.00",
+      "debt": "0.00"
+    },
+    "withdrawalRequest": {
+      "http": 201,
+      "status": "pending"
+    },
+    "withdrawalStart": {
+      "http": 200,
+      "status": "processing"
+    },
+    "withdrawalConfirm": {
+      "http": 200,
+      "status": "paid"
+    },
+    "refundRetry": {
+      "http": 200,
+      "body": {
+        "status": "refunded",
+        "orderId": "f5f19608-b481-4b22-89cf-4ad6790db640"
+      }
+    },
+    "finalWallet": {
+      "balance": "0.00",
+      "frozen": "0.00",
+      "totalEarned": "0.00",
+      "debt": "70.00"
+    },
+    "reconciliation": [],
+    "note": "Disposable DB. Transfer receipt is simulated; no real channel payment made."
+  },
+  "phantom_commission_not_detected": {
+    "profitAmount": "100.00",
+    "sumOfCommissionMovements": "110.00",
+    "outsiderBalance": "10.00",
+    "outsiderTotalEarned": "10.00",
+    "reconciliationBefore": [],
+    "reconciliationAfter": [],
+    "note": "Intentional isolated service-level fault injection, not a demonstrated public API exploit."
+  }
+}

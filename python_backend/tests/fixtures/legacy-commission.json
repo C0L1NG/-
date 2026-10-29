@@ -1,0 +1,225 @@
+{
+  "source": "Legacy Node commissionMath at Git 0a4342e; captured before retirement",
+  "cases": [
+    {
+      "profit": "0.00",
+      "hasParent": false,
+      "expected": {
+        "profitAmount": "0.00",
+        "platformAmount": "0.00",
+        "bonusPool": "0.00",
+        "promoterAmount": "0.00",
+        "parentAmount": null
+      }
+    },
+    {
+      "profit": "0.00",
+      "hasParent": true,
+      "expected": {
+        "profitAmount": "0.00",
+        "platformAmount": "0.00",
+        "bonusPool": "0.00",
+        "promoterAmount": "0.00",
+        "parentAmount": "0.00"
+      }
+    },
+    {
+      "profit": "0.01",
+      "hasParent": false,
+      "expected": {
+        "profitAmount": "0.01",
+        "platformAmount": "0.00",
+        "bonusPool": "0.01",
+        "promoterAmount": "0.01",
+        "parentAmount": null
+      }
+    },
+    {
+      "profit": "0.01",
+      "hasParent": true,
+      "expected": {
+        "profitAmount": "0.01",
+        "platformAmount": "0.00",
+        "bonusPool": "0.01",
+        "promoterAmount": "0.01",
+        "parentAmount": "0.00"
+      }
+    },
+    {
+      "profit": "0.02",
+      "hasParent": false,
+      "expected": {
+        "profitAmount": "0.02",
+        "platformAmount": "0.01",
+        "bonusPool": "0.01",
+        "promoterAmount": "0.01",
+        "parentAmount": null
+      }
+    },
+    {
+      "profit": "0.02",
+      "hasParent": true,
+      "expected": {
+        "profitAmount": "0.02",
+        "platformAmount": "0.01",
+        "bonusPool": "0.01",
+        "promoterAmount": "0.01",
+        "parentAmount": "0.00"
+      }
+    },
+    {
+      "profit": "0.05",
+      "hasParent": false,
+      "expected": {
+        "profitAmount": "0.05",
+        "platformAmount": "0.02",
+        "bonusPool": "0.03",
+        "promoterAmount": "0.03",
+        "parentAmount": null
+      }
+    },
+    {
+      "profit": "0.05",
+      "hasParent": true,
+      "expected": {
+        "profitAmount": "0.05",
+        "platformAmount": "0.02",
+        "bonusPool": "0.03",
+        "promoterAmount": "0.02",
+        "parentAmount": "0.01"
+      }
+    },
+    {
+      "profit": "0.07",
+      "hasParent": false,
+      "expected": {
+        "profitAmount": "0.07",
+        "platformAmount": "0.02",
+        "bonusPool": "0.05",
+        "promoterAmount": "0.05",
+        "parentAmount": null
+      }
+    },
+    {
+      "profit": "0.07",
+      "hasParent": true,
+      "expected": {
+        "profitAmount": "0.07",
+        "platformAmount": "0.02",
+        "bonusPool": "0.05",
+        "promoterAmount": "0.04",
+        "parentAmount": "0.01"
+      }
+    },
+    {
+      "profit": "0.99",
+      "hasParent": false,
+      "expected": {
+        "profitAmount": "0.99",
+        "platformAmount": "0.30",
+        "bonusPool": "0.69",
+        "promoterAmount": "0.69",
+        "parentAmount": null
+      }
+    },
+    {
+      "profit": "0.99",
+      "hasParent": true,
+      "expected": {
+        "profitAmount": "0.99",
+        "platformAmount": "0.30",
+        "bonusPool": "0.69",
+        "promoterAmount": "0.48",
+        "parentAmount": "0.21"
+      }
+    },
+    {
+      "profit": "1.00",
+      "hasParent": false,
+      "expected": {
+        "profitAmount": "1.00",
+        "platformAmount": "0.30",
+        "bonusPool": "0.70",
+        "promoterAmount": "0.70",
+        "parentAmount": null
+      }
+    },
+    {
+      "profit": "1.00",
+      "hasParent": true,
+      "expected": {
+        "profitAmount": "1.00",
+        "platformAmount": "0.30",
+        "bonusPool": "0.70",
+        "promoterAmount": "0.49",
+        "parentAmount": "0.21"
+      }
+    },
+    {
+      "profit": "100.00",
+      "hasParent": false,
+      "expected": {
+        "profitAmount": "100.00",
+        "platformAmount": "30.00",
+        "bonusPool": "70.00",
+        "promoterAmount": "70.00",
+        "parentAmount": null
+      }
+    },
+    {
+      "profit": "100.00",
+      "hasParent": true,
+      "expected": {
+        "profitAmount": "100.00",
+        "platformAmount": "30.00",
+        "bonusPool": "70.00",
+        "promoterAmount": "49.00",
+        "parentAmount": "21.00"
+      }
+    },
+    {
+      "profit": "123.45",
+      "hasParent": false,
+      "expected": {
+        "profitAmount": "123.45",
+        "platformAmount": "37.04",
+        "bonusPool": "86.41",
+        "promoterAmount": "86.41",
+        "parentAmount": null
+      }
+    },
+    {
+      "profit": "123.45",
+      "hasParent": true,
+      "expected": {
+        "profitAmount": "123.45",
+        "platformAmount": "37.04",
+        "bonusPool": "86.41",
+        "promoterAmount": "60.49",
+        "parentAmount": "25.92"
+      }
+    },
+    {
+      "profit": "100000000.03",
+      "hasParent": false,
+      "expected": {
+        "profitAmount": "100000000.03",
+        "platformAmount": "30000000.01",
+        "bonusPool": "70000000.02",
+        "promoterAmount": "70000000.02",
+        "parentAmount": null
+      }
+    },
+    {
+      "profit": "100000000.03",
+      "hasParent": true,
+      "expected": {
+        "profitAmount": "100000000.03",
+        "platformAmount": "30000000.01",
+        "bonusPool": "70000000.02",
+        "promoterAmount": "49000000.01",
+        "parentAmount": "21000000.01"
+      }
+    }
+  ]
+}

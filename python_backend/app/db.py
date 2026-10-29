@@ -14,6 +14,15 @@ def engine_options(database_url: str) -> tuple[object, dict]:
     if not isinstance(schema, str) or not schema.replace("_", "a").isalnum():
         raise ValueError("Database schema must be a simple identifier")
     connect_args = {"server_settings": {"search_path": f'"{schema}"'}}
+    for key, default in (
+        ("statement_timeout", 60000),
+        ("lock_timeout", 5000),
+        ("idle_in_transaction_session_timeout", 60000),
+    ):
+        milliseconds = int(query.pop(key, str(default)))
+        if not 1 <= milliseconds <= 3600000:
+            raise ValueError(f"{key} must be between 1 and 3600000 milliseconds")
+        connect_args["server_settings"][key] = str(milliseconds)
     mode = query.pop("sslmode", query.pop("ssl", None))
     if mode is not None:
         if mode not in {"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}:

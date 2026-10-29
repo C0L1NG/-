@@ -3,7 +3,6 @@
 import asyncio
 import hashlib
 import secrets
-import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request
@@ -15,7 +14,14 @@ from ..db import get_session
 from ..errors import APIError
 from ..models import User, UserRole, WebLoginTicket
 from ..schemas import LoginTicket, SessionLogin
-from ..security import current_admin_id, current_agent_id, require_role, sign_token, verify_password
+from ..security import (
+    Identity,
+    current_admin_identity,
+    current_agent_identity,
+    require_identity,
+    sign_token,
+    verify_password,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -61,28 +67,35 @@ async def admin_login(body: LoginBody, request: Request, session=Depends(get_ses
 
 
 @router.post("/web-ticket", response_model=LoginTicket)
-async def web_ticket(request: Request, agent_id: uuid.UUID = Depends(current_agent_id)):
-    return await create_ticket(request, agent_id)
+async def web_ticket(request: Request, identity: Identity = Depends(current_agent_identity)):
+    return await create_ticket(request, identity)
 
 
 @router.post("/admin/web-ticket", response_model=LoginTicket)
-async def admin_web_ticket(request: Request, admin_id: uuid.UUID = Depends(current_admin_id)):
-    return await create_ticket(request, admin_id)
+async def admin_web_ticket(request: Request, identity: Identity = Depends(current_admin_identity)):
+    return await create_ticket(request, identity)
 
 
-async def create_ticket(request: Request, user_id: uuid.UUID):
+async def create_ticket(request: Request, identity: Identity):
     ticket = secrets.token_urlsafe(32)
     async with request.app.state.session_factory() as session:
         async with session.begin():
-            user = await session.get(User, user_id)
-            if not user or not user.is_active:
+            user = await session.scalar(
+                select(User).where(User.id == identity.user_id).with_for_update()
+            )
+            if (
+                not user
+                or not user.is_active
+                or user.role != identity.role
+                or user.token_version != identity.token_version
+            ):
                 raise APIError(401, "SESSION_REVOKED")
             session.add(
                 WebLoginTicket(
                     id=hashlib.sha256(ticket.encode()).hexdigest(),
-                    user_id=user_id,
+                    user_id=identity.user_id,
                     role=user.role.value,
-                    token_version=user.token_version,
+                    token_version=identity.token_version,
                     expires_at=datetime.now(timezone.utc) + timedelta(seconds=60),
                 )
             )
@@ -148,7 +161,7 @@ async def revoke_session(request: Request, role: UserRole) -> None:
 
     credentials = (
         HTTPAuthorizationCredentials(scheme="Bearer", credentials=auth[7:])
-        if auth.startswith("Bearer ")
+        if auth[:7].lower() == "bearer "
         else None
     )
     async with request.app.state.session_factory() as session:
@@ -158,13 +171,19 @@ async def revoke_session(request: Request, role: UserRole) -> None:
             else request.app.state.settings.jwt_audience
         )
         try:
-            user_id = await require_role(request, session, role, audience, credentials)
+            identity = await require_identity(request, session, role, audience, credentials)
         except APIError as exc:
             if exc.status_code == 401:
                 return
             raise
         await session.execute(
-            update(User).where(User.id == user_id).values(token_version=User.token_version + 1)
+            update(User)
+            .where(
+                User.id == identity.user_id,
+                User.role == identity.role,
+                User.token_version == identity.token_version,
+            )
+            .values(token_version=User.token_version + 1)
         )
         await session.commit()
 

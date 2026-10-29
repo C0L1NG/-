@@ -390,6 +390,8 @@ async def test_all_model_columns_exist_after_actual_migrations(postgres):
         ).all()
         actual = {}
         for table, column in rows:
+            if table == "alembic_version":
+                continue
             actual.setdefault(table, set()).add(column)
         assert {
             name: set(table.columns.keys()) for name, table in Base.metadata.tables.items()

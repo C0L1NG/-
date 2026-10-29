@@ -1,0 +1,82 @@
+x-backend-environment: &backend
+  DATABASE_URL: ${COMPOSE_DATABASE_URL:?Set the URL-encoded DSN using the database hostname}
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+  JWT_ISSUER: ${JWT_ISSUER:-saas-distribution}
+  JWT_AUDIENCE: ${JWT_AUDIENCE:-agent-portal}
+  ADMIN_JWT_AUDIENCE: ${ADMIN_JWT_AUDIENCE:-admin-portal}
+  AGENT_REFERRAL_BASE_URL: ${AGENT_REFERRAL_BASE_URL:?Set a public referral URL}
+  BFF_CONTEXT_SECRET: ${BFF_CONTEXT_SECRET:?Set BFF_CONTEXT_SECRET}
+  PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
+  WECHAT_APP_ID: ${WECHAT_APP_ID:-}
+  WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:-}
+  ADMIN_WECHAT_APP_ID: ${ADMIN_WECHAT_APP_ID:-}
+  ADMIN_WECHAT_APP_SECRET: ${ADMIN_WECHAT_APP_SECRET:-}
+
+services:
+  database:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: commission
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a database password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres -d commission]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  migrate:
+    build:
+      context: .
+      dockerfile: python_backend/Dockerfile
+    command: [python, tools/migrate.py, upgrade]
+    environment:
+      <<: *backend
+      DATABASE_URL: ${COMPOSE_MIGRATION_DATABASE_URL:?Set the owner DSN for migrations}
+    depends_on:
+      database:
+        condition: service_healthy
+  api:
+    build:
+      context: .
+      dockerfile: python_backend/Dockerfile
+    restart: unless-stopped
+    environment: *backend
+    ports:
+      - 127.0.0.1:3000:3000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/health/ready',timeout=5)"]
+      interval: 15s
+      timeout: 6s
+      retries: 3
+  worker:
+    build:
+      context: .
+      dockerfile: python_backend/Dockerfile
+    restart: unless-stopped
+    command: [python, -m, app.worker]
+    environment: *backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:3001:3001
+    environment:
+      AGENT_API_BASE_URL: http://api:3000
+      ADMIN_API_BASE_URL: http://api:3000
+      WEB_ORIGIN: ${WEB_ORIGIN:?Set the public browser origin}
+      BFF_CONTEXT_SECRET: ${BFF_CONTEXT_SECRET}
+    depends_on:
+      api:
+        condition: service_healthy
+volumes:
+  postgres_data:

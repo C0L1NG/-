@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/api";
 import { adminGet } from "@/lib/admin-api";
+import { SystemHealthPanel } from "./system-health";
 import { PaymentRecovery } from "./payment-recovery";
 import { PayoutVerification } from "./payout-verification";
 import { Sheet } from "./agent-ui";
@@ -17,10 +18,12 @@ import type { TreasuryFocus } from "./admin-operations";
 export function AdminTreasury({
   demo = false,
   focus,
+  refreshKey = 0,
   onComplete,
 }: {
   demo?: boolean;
   focus?: TreasuryFocus;
+  refreshKey?: number;
   onComplete?: () => void;
 }) {
   const [details, setDetails] = useState<PayoutDetails | null>(null);
@@ -49,8 +52,58 @@ export function AdminTreasury({
   const [status, setStatus] = useState<
     "" | "pending" | "processing" | "paid" | "rejected"
   >("");
+  const [locationReady, setLocationReady] = useState(false);
   useEffect(() => {
-    if (focus) {
+    const restore = () => {
+      const params = new URL(window.location.href).searchParams;
+      const saved = params.get("fundsTab");
+      if (
+        !focus?.nonce &&
+        (saved === "review" ||
+          saved === "withdraw" ||
+          saved === "account" ||
+          saved === "events")
+      )
+        setTab(saved);
+      const savedStatus = params.get("fundsStatus");
+      if (
+        !focus?.nonce &&
+        (savedStatus === "pending" ||
+          savedStatus === "processing" ||
+          savedStatus === "paid" ||
+          savedStatus === "rejected")
+      )
+        setStatus(savedStatus);
+      const savedPage = Number(params.get("fundsPage") || 1);
+      if (
+        !focus?.nonce &&
+        Number.isInteger(savedPage) &&
+        savedPage > 0 &&
+        savedPage <= 10000
+      )
+        setPage(savedPage);
+      setLocationReady(true);
+    };
+    restore();
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
+  useEffect(() => {
+    if (!locationReady) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("fundsTab", tab);
+    if (status) url.searchParams.set("fundsStatus", status);
+    else url.searchParams.delete("fundsStatus");
+    if (page > 1) url.searchParams.set("fundsPage", String(page));
+    else url.searchParams.delete("fundsPage");
+    window.history.replaceState(null, "", url);
+  }, [locationReady, tab, status, page]);
+  useEffect(() => {
+    if (
+      focus &&
+      (focus.nonce ||
+        !new URL(window.location.href).searchParams.has("fundsTab"))
+    ) {
       setTab(focus.tab);
       setStatus(focus.status ?? "");
       setPage(1);
@@ -82,7 +135,7 @@ export function AdminTreasury({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [demo, page, revision, status]);
+  }, [demo, page, revision, status, refreshKey]);
   async function viewDetails(
     item: WithdrawalData,
     nextAction?: "start" | "confirm" | "reject",
@@ -148,6 +201,7 @@ export function AdminTreasury({
       <p className="mt-2 text-sm text-[#929292]">
         操作留痕 · 渠道付款需核对真实流水后确认
       </p>
+      <SystemHealthPanel demo={demo} refreshKey={refreshKey} />
       <div className="my-5 flex flex-wrap gap-3">
         {(
           [
@@ -175,12 +229,14 @@ export function AdminTreasury({
         <PaymentRecovery
           demo={demo}
           initialStatus={focus?.eventStatus}
+          refreshKey={refreshKey}
           onComplete={onComplete}
         />
       ) : tab === "withdraw" ? (
         <div className="max-w-lg">
           <WithdrawalPanel
             scope="admin"
+            refreshKey={refreshKey}
             demo={demo}
             onComplete={() => {
               setRevision((x) => x + 1);
@@ -201,7 +257,10 @@ export function AdminTreasury({
               演示：林默的银行卡收款凭据待核验。展示账户状态，操作不提交。
             </p>
           ) : (
-            <PayoutVerification onComplete={onComplete} />
+            <PayoutVerification
+              refreshKey={refreshKey}
+              onComplete={onComplete}
+            />
           )}
         </div>
       ) : demo ? (
@@ -254,7 +313,7 @@ export function AdminTreasury({
             </select>
           </label>
           {error && (
-            <p role="alert" className="mb-4 text-sm text-[var(--positive)]">
+            <p role="alert" className="mb-4 text-sm text-[var(--negative)]">
               {error}
               <button
                 className="ml-3"
@@ -472,7 +531,7 @@ export function AdminTreasury({
                     </p>
                   )}
                   {error && (
-                    <p role="alert" className="text-sm text-[var(--positive)]">
+                    <p role="alert" className="text-sm text-[var(--negative)]">
                       {error}
                     </p>
                   )}

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import String, case, cast, exists, func, select, text
+from sqlalchemy import String, case, cast, exists, func, literal, or_, select, text, union_all
 from sqlalchemy.orm import aliased
 
 from .commission import calculate_order_commission
@@ -19,20 +19,83 @@ from .models import (
 )
 
 
-async def reconcile(session_factory):
+async def reconcile(session_factory, *, with_observed_at=False):
     """Account and business checks must share the same read-only database snapshot."""
     discrepancies = []
     async with session_factory() as session:
         async with session.begin():
             await session.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"))
+            observed_at = await session.scalar(text("SELECT clock_timestamp()"))
             for check in (
                 _check_account_totals,
                 _check_movement_integrity,
                 _check_withdrawal_states,
                 _check_order_allocations,
+                _check_commission_movements,
             ):
                 discrepancies.extend(await check(session))
-    return discrepancies
+    return (observed_at, discrepancies) if with_observed_at else discrepancies
+
+
+async def _check_commission_movements(session):
+    """Check both directions; balanced wallets alone cannot prove correct allocation."""
+    expected = union_all(
+        select(
+            cast(CommissionLog.order_id, String).label("business_id"),
+            cast(CommissionLog.recipient_id, String).label("account_key"),
+            CommissionLog.commission_amount.label("amount"),
+            CommissionLog.created_at.label("created_at"),
+        ),
+        select(
+            cast(PlatformCommissionLog.order_id, String),
+            literal("platform"),
+            PlatformCommissionLog.commission_amount,
+            PlatformCommissionLog.created_at,
+        ),
+    ).subquery()
+    actual = select(WalletMovement).where(WalletMovement.kind == "commission").subquery()
+    opening = (
+        select(WalletMovement.account_key, func.max(WalletMovement.created_at).label("cutoff"))
+        .where(WalletMovement.kind == "opening")
+        .group_by(WalletMovement.account_key)
+        .subquery()
+    )
+    matches = (expected.c.business_id == actual.c.business_id) & (
+        expected.c.account_key == actual.c.account_key
+    )
+    missing_or_wrong = (
+        select(expected.c.business_id, expected.c.account_key, actual.c.id)
+        .select_from(
+            expected.outerjoin(actual, matches).outerjoin(
+                opening, opening.c.account_key == expected.c.account_key
+            )
+        )
+        .where(
+            or_(
+                (actual.c.id.is_(None))
+                & (opening.c.cutoff.is_(None) | (expected.c.created_at > opening.c.cutoff)),
+                actual.c.amount != expected.c.amount,
+            )
+        )
+    )
+    issues = []
+    async for business, account, movement_id in await session.stream(
+        missing_or_wrong.execution_options(yield_per=500)
+    ):
+        detail = (
+            "missing commission movement"
+            if movement_id is None
+            else "commission movement amount differs"
+        )
+        issues.append(f"Order {business}, account {account}: {detail}")
+    extra = (
+        select(actual.c.business_id, actual.c.account_key)
+        .select_from(actual.outerjoin(expected, matches))
+        .where(expected.c.business_id.is_(None))
+    )
+    async for business, account in await session.stream(extra.execution_options(yield_per=500)):
+        issues.append(f"Order {business}, account {account}: unexpected commission movement")
+    return issues
 
 
 async def _check_account_totals(session):
@@ -299,83 +362,92 @@ async def _check_order_allocations(session):
         f"Order {key}: commission allocations do not conserve profit" for key in broken
     )
     own, parent = aliased(CommissionLog), aliased(CommissionLog)
-    rows = (
-        await session.execute(
-            select(Order, PlatformCommissionLog, own, parent, Refund)
-            .outerjoin(PlatformCommissionLog, PlatformCommissionLog.order_id == Order.id)
-            .outerjoin(own, (own.order_id == Order.id) & (own.role_type == CommissionRole.PROMOTER))
-            .outerjoin(
-                parent,
-                (parent.order_id == Order.id) & (parent.role_type == CommissionRole.PARENT),
-            )
-            .outerjoin(Refund, Refund.order_id == Order.id)
-            .where(Order.settled_at.is_not(None) | Refund.id.is_not(None))
+    rows = await session.stream(
+        select(Order, PlatformCommissionLog, own, parent, Refund)
+        .outerjoin(PlatformCommissionLog, PlatformCommissionLog.order_id == Order.id)
+        .outerjoin(own, (own.order_id == Order.id) & (own.role_type == CommissionRole.PROMOTER))
+        .outerjoin(
+            parent,
+            (parent.order_id == Order.id) & (parent.role_type == CommissionRole.PARENT),
         )
-    ).all()
-    refund_entries = (
-        await session.scalars(select(WalletMovement).where(WalletMovement.kind == "refund"))
-    ).all()
-    refunds_by_order = {}
-    for entry in refund_entries:
-        refunds_by_order.setdefault(entry.business_id, {})[entry.account_key] = entry.amount
-    for order, platform_log, promoter_log, parent_log, refund in rows:
-        if order.settled_at is not None:
-            split = calculate_order_commission(
-                order.profit_amount, order.attribution_parent_id is not None
-            )
-            correct = platform_log is not None and promoter_log is not None
-            correct = (
-                correct
-                and platform_log.rate == Decimal("0.30")
-                and platform_log.commission_amount == split.platform_amount
-            )
-            correct = (
-                correct
-                and promoter_log.recipient_id == order.promoter_id
-                and promoter_log.commission_amount == split.promoter_amount
-                and promoter_log.rate
-                == (Decimal("0.49") if order.attribution_parent_id else Decimal("0.70"))
-            )
-            if order.attribution_parent_id:
+        .outerjoin(Refund, Refund.order_id == Order.id)
+        .where(Order.settled_at.is_not(None) | Refund.id.is_not(None))
+        .execution_options(yield_per=500)
+    )
+    async for batch in rows.partitions(500):
+        ids = [str(row[0].id) for row in batch if row[4] is not None]
+        refund_entries = (
+            (
+                await session.scalars(
+                    select(WalletMovement).where(
+                        WalletMovement.kind == "refund", WalletMovement.business_id.in_(ids)
+                    )
+                )
+            ).all()
+            if ids
+            else []
+        )
+        refunds_by_order = {}
+        for entry in refund_entries:
+            refunds_by_order.setdefault(entry.business_id, {})[entry.account_key] = entry.amount
+        for order, platform_log, promoter_log, parent_log, refund in batch:
+            if order.settled_at is not None:
+                split = calculate_order_commission(
+                    order.profit_amount, order.attribution_parent_id is not None
+                )
+                correct = platform_log is not None and promoter_log is not None
                 correct = (
                     correct
-                    and parent_log is not None
-                    and parent_log.recipient_id == order.attribution_parent_id
-                    and parent_log.commission_amount == split.parent_amount
-                    and parent_log.rate == Decimal("0.21")
+                    and platform_log.rate == Decimal("0.30")
+                    and platform_log.commission_amount == split.platform_amount
                 )
-            else:
-                correct = correct and parent_log is None
-            if not correct:
-                discrepancies.append(
-                    f"Order {order.id}: beneficiaries/rates differ from locked attribution"
+                correct = (
+                    correct
+                    and promoter_log.recipient_id == order.promoter_id
+                    and promoter_log.commission_amount == split.promoter_amount
+                    and promoter_log.rate
+                    == (Decimal("0.49") if order.attribution_parent_id else Decimal("0.70"))
                 )
-        if refund:
-            expected_platform = platform_log.commission_amount if platform_log else Decimal(0)
-            expected_agents = sum(
-                (log.commission_amount for log in (promoter_log, parent_log) if log),
-                Decimal(0),
-            )
-            if (refund.total_amount, refund.platform_amount, refund.agent_amount) != (
-                order.total_amount,
-                expected_platform,
-                expected_agents,
-            ) or order.payment_status != PaymentStatus.REFUNDED:
-                discrepancies.append(
-                    f"Order {order.id}: refund record differs from original allocations"
+                if order.attribution_parent_id:
+                    correct = (
+                        correct
+                        and parent_log is not None
+                        and parent_log.recipient_id == order.attribution_parent_id
+                        and parent_log.commission_amount == split.parent_amount
+                        and parent_log.rate == Decimal("0.21")
+                    )
+                else:
+                    correct = correct and parent_log is None
+                if not correct:
+                    discrepancies.append(
+                        f"Order {order.id}: beneficiaries/rates differ from locked attribution"
+                    )
+            if refund:
+                expected_platform = platform_log.commission_amount if platform_log else Decimal(0)
+                expected_agents = sum(
+                    (log.commission_amount for log in (promoter_log, parent_log) if log),
+                    Decimal(0),
                 )
-            actual_refunds = refunds_by_order.get(str(order.id), {})
-            expected_refunds = {
-                str(log.recipient_id): log.commission_amount
-                for log in (promoter_log, parent_log)
-                if log
-            }
-            if platform_log:
-                expected_refunds["platform"] = platform_log.commission_amount
-            if actual_refunds != expected_refunds:
-                discrepancies.append(
-                    f"Order {order.id}: refund movements differ from original beneficiaries"
-                )
+                if (refund.total_amount, refund.platform_amount, refund.agent_amount) != (
+                    order.total_amount,
+                    expected_platform,
+                    expected_agents,
+                ) or order.payment_status != PaymentStatus.REFUNDED:
+                    discrepancies.append(
+                        f"Order {order.id}: refund record differs from original allocations"
+                    )
+                actual_refunds = refunds_by_order.get(str(order.id), {})
+                expected_refunds = {
+                    str(log.recipient_id): log.commission_amount
+                    for log in (promoter_log, parent_log)
+                    if log
+                }
+                if platform_log:
+                    expected_refunds["platform"] = platform_log.commission_amount
+                if actual_refunds != expected_refunds:
+                    discrepancies.append(
+                        f"Order {order.id}: refund movements differ from original beneficiaries"
+                    )
     return discrepancies
 
 

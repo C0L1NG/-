@@ -1,0 +1,8 @@
+{
+  "simulatedServer": true,
+  "acceptedOriginalAmount": "100.00",
+  "editedAmount": "200.00",
+  "sameKeyUsedForDifferentPayload": true,
+  "displayedError": "IDEMPOTENCY_CONFLICT",
+  "keyStillUnresolved": true
+}

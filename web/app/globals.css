@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./design-tokens.css";
 
 @theme {
   --font-sans:
@@ -9,11 +10,6 @@
 
 :root {
   color-scheme: dark;
-  --action-bg: #f5f5f5;
-  --action-text: #111111;
-  --positive: #20bf83;
-  --negative: #f36673;
-  --focus: #a3a3a3;
 }
 
 html {
@@ -117,5 +113,297 @@ button:disabled {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@font-face {
+  font-family: Geist;
+  src: url("/fonts/geist-latin.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist-mono-latin.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+.console-app {
+  color: var(--console-text);
+  background: var(--console-bg);
+}
+.console-symbol {
+  display: grid;
+  grid-template-columns: repeat(2, 6px);
+  gap: 3px;
+}
+.console-symbol i {
+  height: 6px;
+  background: #b4eb8e;
+}
+.console-symbol i:last-child {
+  opacity: 0.35;
+}
+.console-topbar {
+  height: 65px;
+}
+.console-topbar > div {
+  height: 100%;
+}
+.console-nav {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid #272b2d;
+}
+.console-nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.console-heading h1 {
+  font-size: 27px;
+  font-weight: 550;
+  letter-spacing: -0.045em;
+}
+.console-breadcrumb {
+  margin-bottom: 5px;
+}
+.console-command-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.console-asset {
+  padding: 28px;
+  border: 1px solid var(--console-line);
+  border-radius: 18px;
+  background: var(--console-raised);
+}
+.console-wallet-hero > div {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  align-items: center;
+}
+.console-wallet-hero .wallet-available {
+  color: #f2f6ee;
+  font-size: clamp(28px, 3.3vw, 52px);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  margin-top: 12px;
+}
+.console-wallet-hero > p:last-child {
+  font-size: 11px;
+  color: #a4b09f;
+  margin-top: 14px;
+}
+.console-asset > .exchange-primary {
+  margin-top: 21px;
+  border-radius: 999px;
+  background: #9fe870;
+  color: #142507;
+  min-height: 40px;
+  font-size: 13px;
+  padding: 0 18px;
+}
+.console-queue {
+  padding: 22px 24px;
+  background: var(--console-surface);
+  border: 1px solid var(--console-line);
+  border-radius: 18px;
+}
+.console-queue .queue-heading h2 {
+  font-size: 14px;
+  font-weight: 500;
+}
+.console-queue .queue-heading > div {
+  display: none;
+}
+.console-queue .queue-list {
+  display: block;
+}
+.console-queue .queue-item {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #292f2d;
+  border-radius: 0;
+  background: transparent;
+  padding: 13px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.console-queue .queue-item:last-child {
+  border-bottom: 0;
+}
+.console-queue .queue-item:hover {
+  background: #202623;
+}
+.console-queue .queue-item > span {
+  flex: 1;
+  font-size: 13px;
+  color: #c0c7c1;
+}
+.console-queue .queue-item strong {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+.console-metrics {
+  background: var(--console-surface);
+  border: 1px solid var(--console-line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.console-revenue {
+  border-right: 1px solid #292e30;
+}
+.console-revenue-action {
+  display: none;
+}
+.console-metric:not(:last-child) {
+  border-right: 1px solid #292e30;
+}
+.console-metric p:first-child,
+.console-revenue > div:first-child {
+  font-size: 12px;
+}
+.console-revenue > p:last-of-type {
+  line-height: 1.6;
+}
+.console-rules {
+  margin-top: 16px;
+  color: #929c97;
+  border-bottom: 1px solid #272e29;
+  font-size: 12px;
+}
+.console-rules summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.console-rules summary::after {
+  content: "+";
+}
+.console-rules[open] summary::after {
+  content: "−";
+}
+.console-rules summary > span {
+  margin-left: auto;
+  color: #7d8980;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.console-audit {
+  padding: 24px;
+  border: 1px solid var(--console-line);
+  border-radius: 16px;
+  background: #121517;
+}
+.console-audit h2 {
+  font-size: 17px;
+  font-weight: 550;
+}
+.console-app table th {
+  color: #98a39d;
+  font-weight: 400;
+  font-size: 11px;
+}
+.console-app table td {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+.console-app .exchange-tab {
+  font-size: 13px;
+  border-radius: 8px;
+}
+.console-app footer {
+  color: #839087;
+}
+@media (min-width: 1024px) {
+  .console-content {
+    margin-left: 208px;
+    padding-left: 32px;
+    padding-right: 32px;
+    max-width: 1600px;
+  }
+  .console-nav {
+    position: fixed;
+    top: 65px;
+    bottom: 0;
+    left: 0;
+    width: 208px;
+    flex-direction: column;
+    gap: 6px;
+    padding: 32px 16px;
+    border: 0;
+    border-right: 1px solid #24292b;
+    background: #101314;
+    z-index: 20;
+  }
+  .console-nav:before {
+    content: "工作空间";
+    font-size: 10px;
+    color: #737f78;
+    padding: 0 12px 14px;
+    letter-spacing: 0.1em;
+  }
+  .console-nav:after {
+    content: "PLATFORM / 统一结算";
+    margin-top: auto;
+    padding: 20px 12px 0;
+    border-top: 1px solid #272e29;
+    font-size: 10px;
+    color: #758079;
+    letter-spacing: 0.04em;
+  }
+  .console-nav .exchange-tab {
+    padding: 13px 12px;
+    border: 0;
+    color: #9ba69f;
+  }
+  .console-nav .exchange-tab[aria-current="page"] {
+    color: #e1f4d5;
+    background: #242e24;
+    font-weight: 500;
+  }
+  .console-nav .exchange-tab:hover {
+    background: #1c231f;
+  }
+}
+@media (max-width: 1023px) {
+  .console-command-grid {
+    grid-template-columns: 1fr;
+  }
+  .console-queue .queue-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+  }
+}
+@media (max-width: 640px) {
+  .console-asset,
+  .console-audit {
+    padding: 20px;
+  }
+  .console-nav {
+    gap: 18px;
+    overflow: auto;
+  }
+  .console-rules summary > span {
+    display: none;
+  }
+  .console-revenue {
+    border: 0;
+    border-bottom: 1px solid #292e30;
+  }
+  .console-metric:not(:last-child) {
+    border-right: 0;
+    border-bottom: 1px solid #292e30;
   }
 }

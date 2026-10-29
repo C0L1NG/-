@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .config import Settings
 from .db import make_session_factory
+from .diagnostics import safe_trace
 from .errors import APIError, api_error_handler
 from .rate_limits import check_login_limit
 from .routers.admin import router as admin_router
@@ -106,10 +107,11 @@ def create_app(
             )
         except Exception as exc:
             logger.error(
-                "request_failed request_id=%s error_type=%s path=%s",
+                "request_failed request_id=%s error_type=%s path=%s frames=%s",
                 request_id,
                 type(exc).__name__,
                 request.url.path,
+                safe_trace(exc),
             )
             response = JSONResponse(
                 {"code": "INTERNAL_SERVER_ERROR", "message": "Service is temporarily unavailable"},
@@ -148,6 +150,9 @@ def create_app(
             status_code=400,
         )
 
+    from .routers.operations import router as operations_router
+
+    app.include_router(operations_router)
     app.include_router(auth_router)
     app.include_router(login_router)
     app.include_router(finance_router)

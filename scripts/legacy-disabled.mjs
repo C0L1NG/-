@@ -1,4 +1,4 @@
 console.error(
-  "The legacy Node API is retired. Start the Python API with pnpm start. Legacy source remains for migration comparison tests only.",
+  "The Node API is retired. Start Python with pnpm start. Compatibility fixtures and financial tests are in python_backend/tests; historical source is in Git.",
 );
 process.exitCode = 1;

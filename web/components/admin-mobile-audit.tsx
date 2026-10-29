@@ -49,10 +49,6 @@ export function AdminMobileAudit() {
     }, 250);
     return () => clearTimeout(timer);
   }, [query]);
-  useEffect(() => {
-    setPage(1);
-    setExpanded(null);
-  }, [revision]);
   async function download() {
     if (exporting) return;
     setExporting(true);

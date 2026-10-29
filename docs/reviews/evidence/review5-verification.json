@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-29",
+  "python": {
+    "passed": 41,
+    "skipped": 38,
+    "database_integration_rerun": false,
+    "reason": "No available disposable PostgreSQL; Docker could not start."
+  },
+  "javascript_typescript": {
+    "passed": 47,
+    "failed": 0
+  },
+  "web_production_build": "passed",
+  "web_typecheck_after_build": "passed",
+  "ruff": "passed",
+  "ruff_format_files": 51,
+  "prettier": "passed",
+  "generated_contracts": "matched",
+  "openapi": "matched",
+  "showcase_shared_files": 45,
+  "probes": {
+    "native_page_race": "reproduced with mock responses",
+    "withdrawal_unknown_result": "reproduced with mock responses"
+  },
+  "metadata_named_index_gaps": 10,
+  "previous_postgres_probe_evidence": "Referenced from review4, relevant backend code unchanged; not reexecuted in this review",
+  "not_performed": [
+    "real payment/WeChat acceptance",
+    "load tests",
+    "backup restore drill",
+    "dependency vulnerability scan",
+    "full browser interaction regression"
+  ]
+}

@@ -13,9 +13,13 @@ type AgentResource =
   | "progress"
   | "payout-accounts"
   | "withdrawals"
+  | `withdrawal-intents/${string}`
   | "wallet";
 type AdminResource =
+  | "system-health"
+  | "reconciliation-cases"
   | "operations-summary"
+  | `withdrawal-intents/${string}`
   | "payment-events"
   | "overview"
   | "team-tree"
@@ -79,6 +83,9 @@ export async function proxyAgentGet(
         ...(response.headers.get("x-request-id")
           ? { "X-Request-ID": response.headers.get("x-request-id")! }
           : {}),
+        ...(response.headers.get("x-account-id")
+          ? { "X-Account-ID": response.headers.get("x-account-id")! }
+          : {}),
       },
     });
   } catch {
@@ -132,6 +139,9 @@ export async function proxyAdminGet(
           "Cache-Control": "no-store",
           ...(response.headers.get("x-request-id")
             ? { "X-Request-ID": response.headers.get("x-request-id")! }
+            : {}),
+          ...(response.headers.get("x-account-id")
+            ? { "X-Account-ID": response.headers.get("x-account-id")! }
             : {}),
           ...(response.headers.get("content-disposition")
             ? {
