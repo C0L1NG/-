@@ -54,11 +54,12 @@ function Children({
       <p className="mb-4 text-xs text-[#929292]">
         直属二级 · 21% 奖励仅流向该导师
       </p>
-      {error ? (
+      {error && (
         <button className={control} onClick={() => setRetry((x) => x + 1)}>
           {error} · 重试
         </button>
-      ) : loading ? (
+      )}
+      {loading && !data ? (
         <p className="text-sm text-[#929292]">正在加载团队…</p>
       ) : (
         <div className="ml-3 space-y-2 border-l border-[#343434] pl-4">
@@ -151,7 +152,6 @@ export function AdminNetwork({
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    setSelected(null);
     const params = new URLSearchParams({
       period,
       page: String(page),
@@ -163,7 +163,15 @@ export function AdminNetwork({
       controller.signal,
     )
       .then((result) => {
-        if (!controller.signal.aborted) setData(result);
+        if (!controller.signal.aborted) {
+          setData(result);
+          setSelected((previous) =>
+            previous
+              ? (result.items.find((item) => item.id === previous.id) ??
+                previous)
+              : null,
+          );
+        }
       })
       .catch(() => {
         if (!controller.signal.aborted)
@@ -204,7 +212,7 @@ export function AdminNetwork({
           />
         </label>
       </div>
-      {error ? (
+      {error && (
         <div role="alert" className={card + " p-6 text-sm text-[#929292]"}>
           {error}
           <button
@@ -217,7 +225,8 @@ export function AdminNetwork({
             登录
           </a>
         </div>
-      ) : loading ? (
+      )}
+      {loading && !data ? (
         <div className={card + " animate-pulse p-12 text-sm text-[#929292]"}>
           正在加载…
         </div>

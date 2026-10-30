@@ -23,11 +23,13 @@ from app.routers.agent import BindBody, WechatLoginBody  # noqa: E402
 from app.routers.auth import AdminWechatBody, ExchangeBody, LoginBody  # noqa: E402
 from app.routers.finance import (  # noqa: E402
     AccountBody,
+    AccountRejectionBody,
     OrderBody,
     ReviewBody,
     VerificationBody,
     WithdrawalBody,
 )
+from app.routers.operations import AuditCase, CasePage, SystemHealth, WorkerState  # noqa: E402
 
 MODELS = (
     schemas.AgentOverview,
@@ -73,6 +75,11 @@ MODELS = (
     schemas.PendingAccount,
     schemas.PendingAccountPage,
     schemas.APIErrorBody,
+    WorkerState,
+    SystemHealth,
+    AuditCase,
+    CasePage,
+    AccountRejectionBody,
     OrderBody,
     AccountBody,
     WithdrawalBody,

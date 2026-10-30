@@ -371,6 +371,39 @@ export type APIErrorBody = {
   error?: string | null;
 };
 
+export type WorkerState = {
+  name: string;
+  state: string;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+};
+
+export type SystemHealth = {
+  workers: WorkerState[];
+  unresolvedCases: number;
+  exhaustedPaymentEvents: number;
+};
+
+export type AuditCase = {
+  id: string;
+  detail: string;
+  status: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  acknowledgedBy: string | null;
+};
+
+export type CasePage = {
+  items: AuditCase[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type AccountRejectionBody = {
+  reason: string;
+};
+
 export type OrderBody = {
   orderNo: string;
   customerId: string;

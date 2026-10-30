@@ -43,11 +43,34 @@ def test_payment_signature_rejects_stale_or_missing_configuration():
     assert exc.value.code == "INVALID_PAYMENT_SIGNATURE"
 
 
+def test_database_lock_and_statement_timeouts_are_bounded_and_configurable():
+    _, options = engine_options(
+        "postgresql://u:p@localhost/db?lock_timeout=2000&statement_timeout=900000"
+    )
+    assert options["connect_args"]["server_settings"]["lock_timeout"] == "2000"
+    assert options["connect_args"]["server_settings"]["statement_timeout"] == "900000"
+    with pytest.raises(ValueError):
+        engine_options("postgresql://u:p@localhost/db?statement_timeout=0")
+
+
 def test_admin_password_hash_never_contains_password_and_checks_correctly():
     value = hash_password("long-password-123")
     assert "long-password-123" not in value
     assert verify_password("long-password-123", value)
     assert not verify_password("wrong", value)
+
+
+def test_example_jwt_secret_cannot_start_the_application():
+    settings = Settings(
+        "postgresql://u:p@localhost/db",
+        "replace-with-a-random-secret-at-least-32-characters-long",
+        "saas",
+        "agent",
+        "admin",
+        "https://example.com",
+    )
+    with pytest.raises(ValueError, match="example placeholder"):
+        settings.validate()
 
 
 class FailingWechat:

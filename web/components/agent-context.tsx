@@ -16,10 +16,11 @@ import {
   ReceiptText,
   UserRound,
   RefreshCw,
-  LockKeyhole,
+  CircleAlert,
 } from "lucide-react";
 import { AgentApiError, agentGet } from "@/lib/api";
 import { getDemoAgent, type DemoLevel, DEMO_NOW } from "@/lib/demo-data";
+import { useResource } from "./use-resource";
 import { useLiveRefresh } from "./live-refresh";
 import type { Overview, Referral } from "@/lib/types";
 
@@ -64,12 +65,34 @@ export function AgentShell({
   const pathname = usePathname();
   const [demoLevel, setDemoLevel] = useState<DemoLevel>("first");
   const demoData = useMemo(() => getDemoAgent(demoLevel), [demoLevel]);
-  const [overview, setOverview] = useState<Overview | null>(null);
-  const [referral, setReferral] = useState<Referral | null>(null);
-  const [loading, setLoading] = useState(!demo);
-  const [error, setError] = useState("");
   const { revision, refresh: triggerRefresh } = useLiveRefresh(!demo);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const account = useResource<Overview>(
+    demo ? null : "/api/agent/overview",
+    revision,
+    agentGet,
+  );
+  const promotion = useResource<Referral>(
+    demo ? null : "/api/agent/referral",
+    revision,
+    agentGet,
+  );
+  const overview = account.data,
+    referral = promotion.data;
+  const loading = account.loading,
+    updatedAt = account.updatedAt;
+  const authDenied = [account.error, promotion.error].some(
+    (reason) =>
+      reason instanceof AgentApiError && [401, 403].includes(reason.status),
+  );
+  const failures = [
+    account.error ? "账户概览暂时不可用" : "",
+    promotion.error ? "推广信息暂时不可用" : "",
+  ].filter(Boolean);
+  const error = authDenied
+    ? "登录状态或账户权限已变化，请重新登录。"
+    : failures.length
+      ? failures.join("；") + "。请重试；已有数据以标注的更新时间为准。"
+      : "";
   const [hidden, setHidden] = useState(false);
   const [theme, setThemeState] = useState<"dark" | "light">("dark");
   const [toast, setToast] = useState("");
@@ -86,39 +109,7 @@ export function AgentShell({
     setToast(message);
     window.setTimeout(() => setToast(""), 2700);
   }, []);
-  const refresh = useCallback(() => {
-    setError("");
-    triggerRefresh();
-  }, [triggerRefresh]);
-
-  useEffect(() => {
-    if (demo) return;
-    const controller = new AbortController();
-    setLoading(true);
-    Promise.all([
-      agentGet<Overview>("/api/agent/overview", controller.signal),
-      agentGet<Referral>("/api/agent/referral", controller.signal),
-    ])
-      .then(([nextOverview, nextReferral]) => {
-        if (controller.signal.aborted) return;
-        setOverview(nextOverview);
-        setReferral(nextReferral);
-        setUpdatedAt(new Date().toISOString());
-        setError("");
-      })
-      .catch((reason: unknown) => {
-        if (controller.signal.aborted) return;
-        setError(
-          reason instanceof AgentApiError && reason.status === 401
-            ? "需要微信授权登录后查看代理商账户。"
-            : "账户数据暂时不可用，请重试。",
-        );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [demo, revision]);
+  const refresh = triggerRefresh;
 
   return (
     <AgentContext.Provider
@@ -142,14 +133,14 @@ export function AgentShell({
     >
       <div
         className={
-          "min-h-dvh bg-[#050505] font-sans antialiased " +
+          "partner-shell min-h-dvh bg-[#080c09] font-sans antialiased " +
           (theme === "dark" ? "agent-dark" : "agent-light")
         }
       >
-        <div className="relative mx-auto min-h-dvh w-full max-w-[430px] overflow-x-hidden bg-[var(--agent-bg)] text-[var(--agent-text)] transition-colors duration-300">
+        <div className="partner-phone relative mx-auto min-h-dvh w-full max-w-[430px] overflow-x-hidden bg-[var(--agent-bg)] text-[var(--agent-text)] transition-colors duration-300">
           <main className="px-5 pb-[calc(116px+env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))]">
             {demo && (
-              <div className="mb-4 flex items-center gap-2 border-b border-[var(--agent-line)] pb-3 text-[11px] text-[var(--agent-muted)]">
+              <div className="mb-5 flex items-center gap-2 text-[10px] tracking-wide text-[var(--agent-muted)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--action-bg)]" />
                 公开演示 · 虚构数据
               </div>
@@ -159,7 +150,7 @@ export function AgentShell({
                 role="alert"
                 className="mb-5 flex items-center gap-3 rounded-lg border border-[var(--agent-line)] bg-[var(--agent-surface)] px-4 py-3 text-[12px] text-[var(--agent-muted)]"
               >
-                <LockKeyhole size={16} />
+                <CircleAlert size={16} />
                 <span className="flex-1">{error}</span>
                 <button
                   type="button"
@@ -171,12 +162,9 @@ export function AgentShell({
                 </button>
               </div>
             )}
-            {error ? (
-              <Link
-                href="/login/"
-                className="block rounded-full bg-[var(--action-bg)] p-3 text-center text-sm font-bold text-[var(--action-text)]"
-              >
-                前往登录
+            {authDenied ? (
+              <Link href="/login/" className="exchange-primary">
+                重新登录
               </Link>
             ) : (
               children
@@ -184,7 +172,7 @@ export function AgentShell({
           </main>
           <nav
             aria-label="代理商导航"
-            className="fixed bottom-0 left-1/2 z-30 flex w-full max-w-[430px] -translate-x-1/2 justify-around border-t border-[var(--agent-line)] bg-[var(--agent-nav)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3.5 backdrop-blur-lg"
+            className="partner-nav fixed bottom-0 left-1/2 z-30 flex w-full max-w-[430px] -translate-x-1/2 justify-around border-t border-[var(--agent-line)] bg-[var(--agent-nav)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3.5 backdrop-blur-lg"
           >
             {tabs.map(({ href, label, icon: Icon }) => {
               const active =

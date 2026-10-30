@@ -1,0 +1,14 @@
+{
+  "environment": "synthetic disposable PostgreSQL, local machine; not production capacity",
+  "orders": 200,
+  "concurrency": 8,
+  "settlementSeconds": 1.062,
+  "ordersPerSecond": 188.41,
+  "settlementP95Ms": 186.51,
+  "reconciliationMs": 28.24,
+  "discrepancies": 0,
+  "networkQueryMs": 12.07,
+  "rootTeams": 1,
+  "exportMs": 9.03,
+  "exportBytes": 36322
+}

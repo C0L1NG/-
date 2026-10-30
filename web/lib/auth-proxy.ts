@@ -2,6 +2,7 @@ import { createHash, createHmac, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { matchesRequestOrigin } from "./request-origin";
+import { readLimitedBody, RequestBodyError } from "./request-body";
 
 export function sameOrigin(request: NextRequest): boolean {
   return matchesRequestOrigin(
@@ -52,9 +53,7 @@ export async function proxyMutation(
     return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   const requestId = randomBytes(16).toString("hex");
   try {
-    const body = await request.text();
-    if (body.length > 8192)
-      return NextResponse.json({ code: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+    const body = await readLimitedBody(request);
     const contextSecret = process.env.BFF_CONTEXT_SECRET;
     if (login && (!contextSecret || contextSecret.length < 32))
       return NextResponse.json(
@@ -150,7 +149,9 @@ export async function proxyMutation(
       },
     });
     return setClient(response);
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestBodyError)
+      return NextResponse.json({ code: error.code }, { status: error.status });
     if (isLogout) return localLogout(false);
     return NextResponse.json(
       { code: "API_UNAVAILABLE", message: "服务暂时不可用，请重试" },

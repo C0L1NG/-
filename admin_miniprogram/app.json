@@ -8,14 +8,14 @@
   ],
   "window": {
     "navigationBarTitleText": "平台主管",
-    "navigationBarBackgroundColor": "#0A0A0A",
+    "navigationBarBackgroundColor": "#0b0f0b",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#0A0A0A"
+    "backgroundColor": "#0b0f0b"
   },
   "tabBar": {
-    "color": "#949494",
-    "selectedColor": "#F5F5F5",
-    "backgroundColor": "#0A0A0A",
+    "color": "#8e9b8a",
+    "selectedColor": "#9fe870",
+    "backgroundColor": "#0b0f0b",
     "borderStyle": "black",
     "list": [
       {

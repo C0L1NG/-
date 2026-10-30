@@ -56,9 +56,9 @@ export function LedgerRow({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 border-b border-[var(--agent-line)] py-4 text-left transition-colors hover:bg-[var(--agent-surface-raised)] focus-visible:outline-2 focus-visible:outline-[var(--focus)]"
+      className="partner-ledger-row flex w-full items-center gap-3 border-b border-[var(--agent-line)] py-4 text-left transition-colors hover:bg-[var(--agent-surface-raised)] focus-visible:outline-2 focus-visible:outline-[var(--focus)]"
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--agent-line)] bg-[var(--agent-soft)] text-[var(--agent-accent-text)]">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--agent-soft)] text-[var(--agent-accent-text)]">
         {refund ? (
           <RotateCcw size={19} strokeWidth={1.7} />
         ) : own ? (
@@ -77,8 +77,8 @@ export function LedgerRow({
         <span className="mt-1.5 block text-[12px] leading-5 text-[var(--agent-muted)]">
           {item.ratePercent}% {own ? "自身出单" : "团队奖励"} ·{" "}
           {item.settlementStatus === "REVERSED" ? "已冲正" : "已结算"}
-          <span className="block text-[11px]">
-            {item.settledAt.slice(11, 16)} UTC
+          <span className="ml-1 text-[11px]">
+            · {item.settledAt.slice(11, 16)} UTC
           </span>
         </span>
       </span>

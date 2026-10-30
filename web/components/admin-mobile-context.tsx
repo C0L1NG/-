@@ -3,16 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, Network, RefreshCw, ShieldCheck } from "lucide-react";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-import { adminGet } from "@/lib/admin-api";
+import { createContext, useCallback, useContext, useState } from "react";
+import { AdminApiError, adminGet } from "@/lib/admin-api";
 import { demoAdminOverview, demoAdminOverviewDay } from "@/lib/admin-demo-data";
 import type { AdminOverview } from "@/lib/admin-types";
+import { useResource } from "./use-resource";
 import { useLiveRefresh } from "./live-refresh";
 
 type Context = {
@@ -45,55 +40,38 @@ export function AdminMobileShell({
   demo?: boolean;
 }) {
   const pathname = usePathname();
-  const [all, setAll] = useState<AdminOverview | null>(
-    demo ? demoAdminOverview : null,
+  const { revision, refresh } = useLiveRefresh(!demo);
+  const total = useResource<AdminOverview>(
+    demo ? null : "/api/admin/overview?period=all",
+    revision,
+    adminGet,
   );
-  const [day, setDay] = useState<AdminOverview | null>(
-    demo ? demoAdminOverviewDay : null,
+  const today = useResource<AdminOverview>(
+    demo ? null : "/api/admin/overview?period=day",
+    revision,
+    adminGet,
   );
-  const [loading, setLoading] = useState(!demo),
-    [error, setError] = useState(""),
-    [toast, setToast] = useState("");
-  const { revision, refresh: triggerRefresh } = useLiveRefresh(!demo);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
-  const refresh = useCallback(() => {
-    setError("");
-    triggerRefresh();
-  }, [triggerRefresh]);
+  const all = demo ? demoAdminOverview : total.data;
+  const day = demo ? demoAdminOverviewDay : today.data;
+  const loading = total.loading || today.loading;
+  const authDenied = [total.error, today.error].some(
+    (reason) =>
+      reason instanceof AdminApiError && [401, 403].includes(reason.status),
+  );
+  const error = authDenied
+    ? "管理会话已失效，请重新登录。"
+    : total.error || today.error
+      ? "部分概览暂时无法更新；已有数据以更新时间为准，其他页面仍可使用。"
+      : "";
+  const updatedAt =
+    total.updatedAt && today.updatedAt
+      ? [total.updatedAt, today.updatedAt].sort()[0]
+      : null;
+  const [toast, setToast] = useState("");
   const notify = useCallback((message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2700);
   }, []);
-  useEffect(() => {
-    if (demo) return;
-    const controller = new AbortController();
-    setLoading(true);
-    Promise.all([
-      adminGet<AdminOverview>(
-        "/api/admin/overview?period=all",
-        controller.signal,
-      ),
-      adminGet<AdminOverview>(
-        "/api/admin/overview?period=day",
-        controller.signal,
-      ),
-    ])
-      .then(([total, today]) => {
-        if (controller.signal.aborted) return;
-        setAll(total);
-        setDay(today);
-        setUpdatedAt(new Date().toISOString());
-        setError("");
-      })
-      .catch(() => {
-        if (!controller.signal.aborted)
-          setError("管理员数据暂时不可用，请检查登录会话。");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [demo, revision]);
 
   return (
     <AdminMobileContext.Provider
@@ -119,10 +97,8 @@ export function AdminMobileShell({
                 <RefreshCw size={15} />
               </button>
             )}
-            {error &&
-            !pathname.includes("team") &&
-            !pathname.includes("audit") ? (
-              <Link href="/login/" className="text-[var(--positive)]">
+            {authDenied ? (
+              <Link href="/login/" className="exchange-primary">
                 重新登录
               </Link>
             ) : (

@@ -1,0 +1,35 @@
+{
+  "realBrowser": "Chrome headless, built React; controlled API",
+  "networkDetailClosedByBackgroundRefresh": true,
+  "childPage2ResetTo1ByBackgroundRefresh": true,
+  "networkRequests": [
+    {
+      "child": false,
+      "page": 1
+    },
+    {
+      "child": false,
+      "page": 1
+    },
+    {
+      "child": true,
+      "page": 1
+    },
+    {
+      "child": true,
+      "page": 2
+    },
+    {
+      "child": true,
+      "page": 2
+    },
+    {
+      "child": false,
+      "page": 1
+    },
+    {
+      "child": true,
+      "page": 1
+    }
+  ]
+}

@@ -20,9 +20,13 @@ async function fixture() {
     path.join(root, "scripts/sync-showcase.mjs"),
   );
   for (const base of ["web", "showcase-site"]) {
-    for (const dir of ["components", "lib", "app/agent"])
+    for (const dir of ["components", "lib", "app/agent", "public/fonts"])
       await mkdir(path.join(root, base, dir), { recursive: true });
-    for (const file of ["app/globals.css", "app/agent/agent-theme.css"])
+    for (const file of [
+      "app/globals.css",
+      "app/design-tokens.css",
+      "app/agent/agent-theme.css",
+    ])
       await writeFile(path.join(root, base, file), "css");
   }
   return root;
@@ -51,6 +55,12 @@ test("sync creates nested folders, handles assets, and checks removed source fil
       "<svg/>",
     );
     await writeFile(path.join(root, "web/lib/options.json"), "{}");
+    const font = Buffer.from([0x77, 0x4f, 0x46, 0x32, 0, 255]);
+    await writeFile(path.join(root, "web/public/fonts/test.woff2"), font);
+    await writeFile(
+      path.join(root, "web/public/fonts/LICENSE.txt"),
+      "font license",
+    );
     assert.equal(run(root).status, 0);
     assert.equal(
       await readFile(
@@ -60,6 +70,17 @@ test("sync creates nested folders, handles assets, and checks removed source fil
       "component",
     );
     assert.equal(run(root, true).status, 0);
+    assert.deepEqual(
+      await readFile(path.join(root, "showcase-site/public/fonts/test.woff2")),
+      font,
+    );
+    assert.equal(
+      await readFile(
+        path.join(root, "showcase-site/public/fonts/LICENSE.txt"),
+        "utf8",
+      ),
+      "font license",
+    );
     await writeFile(
       path.join(root, "showcase-site/components/orphan.tsx"),
       "orphan",

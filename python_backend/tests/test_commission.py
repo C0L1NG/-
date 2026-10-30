@@ -1,6 +1,8 @@
+import json
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from sqlalchemy.dialects import postgresql
@@ -17,6 +19,21 @@ from app.models import (
     UserRole,
     Wallet,
 )
+
+
+@pytest.mark.parametrize(
+    "case",
+    json.loads((Path(__file__).parent / "fixtures/legacy-commission.json").read_text())["cases"],
+)
+def test_legacy_cent_allocation_fixture(case):
+    result = calculate_order_commission(case["profit"], case["hasParent"])
+    assert {
+        "profitAmount": money(result.profit_amount),
+        "platformAmount": money(result.platform_amount),
+        "bonusPool": money(result.bonus_pool),
+        "promoterAmount": money(result.promoter_amount),
+        "parentAmount": money(result.parent_amount) if result.parent_amount is not None else None,
+    } == case["expected"]
 
 
 def test_direct_promoter_gets_entire_70_percent_pool():

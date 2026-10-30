@@ -1,0 +1,55 @@
+{
+  "method": "Static comparison of named CREATE INDEX statements against SQLAlchemy Table.indexes; not a live database diff.",
+  "missingNamedIndexesInOrmMetadata": [
+    {
+      "table": "orders",
+      "sqlIndex": "orders_paid_at_idx",
+      "source": "prisma/migrations/20261003000000_financial_lifecycle/migration.sql"
+    },
+    {
+      "table": "orders",
+      "sqlIndex": "orders_settled_at_idx",
+      "source": "prisma/migrations/20261003000000_financial_lifecycle/migration.sql"
+    },
+    {
+      "table": "wallet_movements",
+      "sqlIndex": "wallet_movements_account_time_idx",
+      "source": "prisma/migrations/20261003000000_financial_lifecycle/migration.sql"
+    },
+    {
+      "table": "withdrawals",
+      "sqlIndex": "withdrawals_status_created_at_idx",
+      "source": "prisma/migrations/20261003000000_financial_lifecycle/migration.sql"
+    },
+    {
+      "table": "web_login_tickets",
+      "sqlIndex": "web_login_tickets_expiry_idx",
+      "source": "prisma/migrations/20261003000000_financial_lifecycle/migration.sql"
+    },
+    {
+      "table": "payment_inbox",
+      "sqlIndex": "payment_inbox_retry_idx",
+      "source": "prisma/migrations/20261003010000_second_review_fixes/migration.sql"
+    },
+    {
+      "table": "auth_rate_limits",
+      "sqlIndex": "auth_rate_limits_window_idx",
+      "source": "prisma/migrations/20261003010000_second_review_fixes/migration.sql"
+    },
+    {
+      "table": "wallet_movements",
+      "sqlIndex": "wallet_movements_user_kind_time_idx",
+      "source": "prisma/migrations/20261003010000_second_review_fixes/migration.sql"
+    },
+    {
+      "table": "refunds",
+      "sqlIndex": "refunds_created_at_idx",
+      "source": "prisma/migrations/20261003010000_second_review_fixes/migration.sql"
+    },
+    {
+      "table": "platform_commission_logs",
+      "sqlIndex": "platform_commission_logs_created_at_idx",
+      "source": "prisma/migrations/20261003010000_second_review_fixes/migration.sql"
+    }
+  ]
+}

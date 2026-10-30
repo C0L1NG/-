@@ -1,0 +1,12 @@
+{
+  "source": "synthetic test data only",
+  "ordersRestored": 5,
+  "platformEarned": "120.00",
+  "refundsRestored": 1,
+  "withdrawalActionsRestored": 2,
+  "agentFrozenBalance": "5.00",
+  "schemaObjectsMatch": true,
+  "reconciliationDifferences": 0,
+  "migrationRevision": "20261029_hardening",
+  "backupSha256": "9acb7f01a880f1e3cfb5157ae835d3338dd93782e7d22d090b0a57604e2fdf37"
+}

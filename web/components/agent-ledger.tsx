@@ -121,6 +121,9 @@ export function AgentLedger() {
                 ).values(),
               ),
         );
+        setSelected((old) =>
+          old ? (result.items.find((item) => item.id === old.id) ?? old) : null,
+        );
         setTotalPages(result.totalPages);
         setTotal(result.total);
       })
@@ -136,7 +139,7 @@ export function AgentLedger() {
   useEffect(() => {
     setPage(1);
     setSelected(null);
-  }, [revision, demoData]);
+  }, [demoData]);
 
   function changeFilter(value: Filter) {
     if (value === filter) return;

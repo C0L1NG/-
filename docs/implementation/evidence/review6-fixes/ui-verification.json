@@ -1,0 +1,11 @@
+{
+  "agent_referral_failure_isolated": true,
+  "background_refresh_keeps_page_and_detail": true,
+  "admin_overview_failure_does_not_block_treasury": true,
+  "global_refresh_updates_withdrawal_list": true,
+  "task_url_restores_workspace_page_and_period": true,
+  "account_switch_does_not_reuse_previous_intent": true,
+  "unknown_withdrawal_recovers_after_reload_without_duplicate": true,
+  "mobile_375_430_no_horizontal_overflow": true,
+  "javascript_page_errors": []
+}

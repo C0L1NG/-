@@ -22,8 +22,10 @@ from .models import (
     PaymentInbox,
     PaymentStatus,
     PlatformCommissionLog,
+    PlatformWallet,
     Refund,
     SettlementStatus,
+    Wallet,
 )
 from .wallets import move_account
 
@@ -93,6 +95,7 @@ async def reverse_locked_order(session: AsyncSession, order: Order, reference: s
         )
     )
     order.payment_status = PaymentStatus.REFUNDED
+    order.refund_pending = False
     order.settlement_status = SettlementStatus.REVERSED
     order.refunded_at = datetime.now(timezone.utc)
     order.updated_at = datetime.now(timezone.utc)
@@ -107,6 +110,34 @@ async def accept_payment_notice(notice: PaymentNotice, session_factory) -> dict:
     # Receipt commits independently. A settlement rollback must not lose merchant evidence.
     async with session_factory() as session:
         async with session.begin():
+            # Serialize durable receipt with settlement. Once a valid refund is
+            # committed, manual settlement and new payouts must respect its hold.
+            order = await session.scalar(
+                select(Order).where(Order.id == notice.orderId).with_for_update()
+            )
+            if (
+                order
+                and notice.type == "refunded"
+                and notice.amount == order.total_amount
+                and len(f"{notice.provider}:{notice.transactionId}") <= 128
+                and order.payment_status != PaymentStatus.REFUNDED
+            ):
+                # Payout claims and requests lock these same accounts. This
+                # makes receipt of the hold and permission to pay serializable,
+                # including a claim already in flight before the hold commits.
+                await session.scalar(
+                    select(PlatformWallet).where(PlatformWallet.id == "platform").with_for_update()
+                )
+                owners = [order.promoter_id]
+                if order.attribution_parent_id:
+                    owners.append(order.attribution_parent_id)
+                await session.scalars(
+                    select(Wallet)
+                    .where(Wallet.user_id.in_(owners))
+                    .order_by(Wallet.user_id)
+                    .with_for_update()
+                )
+                order.refund_pending = True
             await session.execute(
                 text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
                 {"key": f"payment:{notice.provider}:{notice.eventId}"},
@@ -160,6 +191,9 @@ async def process_payment_inbox(inbox_id: uuid.UUID, session_factory, *, due_onl
                 failure = exc
                 inbox.status = "failed"
                 inbox.last_error = exc.code if isinstance(exc, APIError) else type(exc).__name__
+                if isinstance(exc, APIError) and exc.code == "INVALID_PAYMENT_REFERENCE":
+                    # Preserve invalid evidence for audit, but do not auto-retry it.
+                    inbox.attempts = max(inbox.attempts, 20)
                 inbox.next_attempt_at = datetime.now(timezone.utc) + timedelta(
                     seconds=min(3600, 30 * 2 ** min(inbox.attempts - 1, 7))
                 )
@@ -195,17 +229,49 @@ async def apply_payment_notice(notice: PaymentNotice, payload_hash: str, session
     if len(reference) > 128:
         raise APIError(400, "INVALID_PAYMENT_REFERENCE")
     if notice.type == "paid":
-        if order.payment_status == PaymentStatus.REFUNDED:
-            raise APIError(409, "ORDER_ALREADY_REFUNDED")
         if order.payment_reference and order.payment_reference != reference:
             raise APIError(409, "PAYMENT_REFERENCE_CONFLICT")
-        if order.payment_status not in {PaymentStatus.PENDING, PaymentStatus.PAID}:
-            raise APIError(409, "INVALID_PAYMENT_STATE")
-        order.payment_status = PaymentStatus.PAID
-        order.payment_reference = reference
-        order.paid_at = order.paid_at or datetime.now(timezone.utc)
-        await session.flush()
-        result = await settle_locked_order(session, order)
+        if order.payment_status == PaymentStatus.REFUNDED:
+            # A late duplicate payment fact cannot resurrect a completed refund.
+            result = {"status": "already_refunded", "orderId": str(order.id)}
+        else:
+            if order.payment_status not in {PaymentStatus.PENDING, PaymentStatus.PAID}:
+                raise APIError(409, "INVALID_PAYMENT_STATE")
+            order.payment_status = PaymentStatus.PAID
+            order.payment_reference = reference
+            order.paid_at = order.paid_at or datetime.now(timezone.utc)
+            await session.flush()
+            if order.refund_pending:
+                # Reordered full-refund evidence cancels the pending allocation in
+                # this same transaction: no commission becomes spendable in between.
+                refunds = (
+                    await session.scalars(
+                        select(PaymentInbox)
+                        .where(
+                            PaymentInbox.payload["orderId"].astext == str(order.id),
+                            PaymentInbox.payload["type"].astext == "refunded",
+                            PaymentInbox.status != "processed",
+                        )
+                        .order_by(PaymentInbox.created_at, PaymentInbox.id)
+                    )
+                ).all()
+                refund = next(
+                    (
+                        PaymentNotice.model_validate(item.payload)
+                        for item in refunds
+                        if Decimal(item.payload["amount"]) == order.total_amount
+                        and len(f"{item.payload['provider']}:{item.payload['transactionId']}")
+                        <= 128
+                    ),
+                    None,
+                )
+                if refund is None:
+                    raise APIError(409, "REFUND_REVIEW_REQUIRED")
+                result = await reverse_locked_order(
+                    session, order, f"{refund.provider}:{refund.transactionId}"
+                )
+            else:
+                result = await settle_locked_order(session, order)
     else:
         result = await reverse_locked_order(session, order, reference)
     session.add(

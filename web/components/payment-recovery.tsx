@@ -7,9 +7,11 @@ import { demoPaymentEvents } from "@/lib/admin-finance-demo";
 export function PaymentRecovery({
   demo = false,
   initialStatus,
+  refreshKey = 0,
   onComplete,
 }: {
   demo?: boolean;
+  refreshKey?: number;
   initialStatus?: "failed" | "pending";
   onComplete?: () => void;
 }) {
@@ -48,7 +50,7 @@ export function PaymentRecovery({
     return () => {
       active = false;
     };
-  }, [demo, page, revision, status]);
+  }, [demo, page, revision, status, refreshKey]);
   async function retry(id: string) {
     setBusy(id);
     setError("");
@@ -92,7 +94,7 @@ export function PaymentRecovery({
         已验签通知独立保存。自动恢复任务按退避间隔重试；持续失败需人工修复后重试。
       </p>
       {error && (
-        <p role="alert" className="text-sm text-[var(--positive)]">
+        <p role="alert" className="text-sm text-[var(--negative)]">
           {error}
           <button className="ml-3" onClick={() => setRevision((x) => x + 1)}>
             刷新

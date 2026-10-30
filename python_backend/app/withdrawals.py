@@ -1,11 +1,23 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text
 
 from .errors import APIError
-from .models import PayoutAccount, Withdrawal, WithdrawalAction
+from .models import Order, PayoutAccount, Withdrawal, WithdrawalAction
 from .wallets import lock_account, move_account
+
+
+async def has_pending_refund(session, owner, scope):
+    filters = [Order.refund_pending.is_(True)]
+    if scope == "agent":
+        filters.append(or_(Order.promoter_id == owner, Order.attribution_parent_id == owner))
+    return await session.scalar(select(Order.id).where(*filters).limit(1)) is not None
+
+
+async def assert_no_pending_refund(session, owner, scope):
+    if await has_pending_refund(session, owner, scope):
+        raise APIError(409, "REFUND_REVIEW_REQUIRED")
 
 
 async def request_withdrawal(
@@ -40,8 +52,10 @@ async def request_withdrawal(
                     PayoutAccount.id == account_id, PayoutAccount.user_id == owner
                 )
             )
-            if not account or not account.verified:
+            if not account or not account.verified or account.status != "active":
                 raise APIError(409, "VERIFIED_PAYOUT_ACCOUNT_REQUIRED")
+            await lock_account(session, owner if scope == "agent" else None)
+            await assert_no_pending_refund(session, owner, scope)
             withdrawal = Withdrawal(
                 id=uuid.uuid4(),
                 user_id=owner,
@@ -109,6 +123,7 @@ async def review_withdrawal(
                 account = await lock_account(
                     session, item.user_id if item.account_scope == "agent" else None
                 )
+                await assert_no_pending_refund(session, item.user_id, item.account_scope)
                 if account.debt_balance > 0:
                     raise APIError(409, "REFUND_DEBT_BLOCKS_PAYOUT")
                 if account.frozen_balance < item.amount:

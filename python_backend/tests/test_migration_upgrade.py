@@ -22,9 +22,7 @@ async def test_populated_legacy_upgrade_preserves_beneficiaries_and_wallet_openi
     connection = await asyncpg.connect(
         dsn=url.set(drivername="postgresql", query={}).render_as_string(hide_password=False)
     )
-    migrations = sorted(
-        (Path(__file__).resolve().parents[2] / "prisma/migrations").glob("*/migration.sql")
-    )
+    migrations = sorted((Path(__file__).resolve().parents[1] / "migrations/sql").glob("2026*.sql"))
     seller, parent, settled, pending = [uuid.uuid4() for _ in range(4)]
     try:
         await connection.execute(f'CREATE SCHEMA "{schema}"')
@@ -32,7 +30,7 @@ async def test_populated_legacy_upgrade_preserves_beneficiaries_and_wallet_openi
         cutover = next(
             i
             for i, path in enumerate(migrations)
-            if path.parent.name == "20261003000000_financial_lifecycle"
+            if path.stem == "20261003000000_financial_lifecycle"
         )
         for migration in migrations[:cutover]:
             await connection.execute(migration.read_text())

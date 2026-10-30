@@ -1,6 +1,6 @@
 # FastAPI 后端
 
-使用 PostgreSQL + SQLAlchemy 2.0 Async / asyncpg + Pydantic v2。金额不使用二进制浮点数；SQL 约束和触发器由根目录 `prisma/migrations/` 管理。
+使用 PostgreSQL + SQLAlchemy 2.0 Async / asyncpg + Pydantic v2。金额不使用二进制浮点数；`migrations/` 是唯一 Alembic 迁移链，包含完整 PostgreSQL 约束、索引和触发器。旧 Node/Prisma 运行链已退出，部署与接管见 [运行手册](../docs/operations/runbook.md)。
 
 ## 目录职责
 
@@ -41,7 +41,7 @@ cd python_backend
 
 生产仅安装 `requirements.txt`，通过环境变量注入密钥。开发 HTTP 可设 `COOKIE_SECURE=false`；生产 HTTPS 保持 true。支持旧连接串 `schema`、`sslmode` / `ssl`、`connection_limit`、`pool_timeout` 和 `connect_timeout`，未知参数启动时拒绝。URL 默认 public search_path；不会连接测试以外数据库执行自动迁移。
 
-Swagger 在 `/docs`；OpenAPI 在 `/openapi.json`。所有错误统一 JSON，参数验证保持旧 400 行为；响应带 `X-Request-ID` 和 no-store。日志仅包含关联 ID、方法、路径、状态、耗时、异常类型，不包含请求体、密码和令牌。身份入口有进程内限流，多实例部署还需可信反向代理的共享限流。
+Swagger 在 `/docs`；OpenAPI 在 `/openapi.json`。所有错误统一 JSON，参数验证保持旧 400 行为；响应带 `X-Request-ID` 和 no-store。日志仅包含关联 ID、方法、路径、状态、耗时、异常类型，不包含请求体、密码和令牌。身份入口使用 PostgreSQL 共享计数限流；BFF 来源必须通过服务端签名验证，公网入口仍需配置总量限制。
 
 ## 身份生命周期
 
@@ -109,7 +109,7 @@ HTTP 头 `X-Payment-Timestamp` 是 Unix 秒；`X-Payment-Signature` 是 `HMAC_SH
 
 ```bash
 .venv/bin/python -m pytest -q
-TEST_DATABASE_URL='postgresql://USER:PASSWORD@localhost:5432/commission_test' .venv/bin/python -m pytest -q
+TEST_DATABASE_URL='postgresql://USER:PASSWORD@localhost:5432/commission_test' .venv/bin/python -m pytest -q --require-database
 .venv/bin/python -m ruff check . ../scripts/configure-miniprogram.py
 .venv/bin/python -m ruff format --check . ../scripts/configure-miniprogram.py
 .venv/bin/python tools/generate_ts_contracts.py --check
@@ -121,7 +121,7 @@ TEST_DATABASE_URL='postgresql://USER:PASSWORD@localhost:5432/commission_test' .v
 
 ## 第二轮整改后的运行配置
 
-新增迁移 `20261003010000_second_review_fixes` 添加通知收件箱、共享限流计数、提现认领/驳回字段和审批历史，以及实际退款查询的复合索引。先备份、在生产副本演练，再通过原 Prisma 迁移流程应用，不能用 `create_all` 代替。
+历史迁移 `20261003010000_second_review_fixes` 已冻结于 Alembic 基线。当前新增 `20261029_hardening`，通过 `tools/migrate.py` 管理。已有旧库先备份并运行 `adopt-prisma` 校验结构与历史，再 `upgrade`，不能用 `create_all` 代替。
 
 Next 与 Python 必须设置相同的随机 `BFF_CONTEXT_SECRET`（至少 32 字符，不能使用 `NEXT_PUBLIC_` 前缀）。网页登录在未配置时返回 503。Next 为每个浏览器生成 HttpOnly `rate_client`，将请求路径、方法、原始请求体哈希、时间与该匿名标识签名后传给 Python；不采用浏览器的 `X-Forwarded-For`。Python 不接受没有有效签名的 BFF 身份。计数保存在 PostgreSQL，多进程共享；每个来源与登录路径每个自然分钟 20 次，管理员账户每分钟 100 次，后者防止轮换匿名标识绕过限制。直接小程序请求仍按网络来源限制；公网应另配置入口总量限制。计数不保存密码或明文用户名，窗口到期由 worker/清理命令移除。
 
@@ -132,7 +132,7 @@ cd python_backend
 .venv/bin/python -m app.worker
 ```
 
-每 30 秒选择最多 100 条到期通知，失败按 30 秒至 1 小时退避，自动尝试最多 20 次。行锁与原订单幂等规则防止重复分账。超过次数或持续失败时，在老板资金中心的“支付恢复”页定位、修复原因后重试；该入口只能重新处理原验签通知，不能改支付金额或模拟收款。每 5 分钟运行业务对账和过期计数清理；延迟超过 5 分钟的通知、对账差异和任务周期失败写 ERROR 日志。部署方需将这些日志及 worker 存活状态接入现有告警系统。本仓库尚未连接外部通知服务。
+支付恢复每 30 秒选择最多 100 条到期通知，失败按 30 秒至 1 小时退避，自动尝试最多 20 次。对账采用独立调度每 5 分钟运行，失败不阻断恢复。对账差异持久化，可在资金中心认领；修复并通过后续对账后自动关闭。`worker_health` 保存最近成功时间和错误类型，老板端 `system-health` 显示失联/降级，不能用 API 存活替代 worker 健康。外部告警发送仍需部署环境配置。
 
 手工批处理：
 

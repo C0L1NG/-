@@ -1,0 +1,18 @@
+/* Generated from design/tokens.json. */
+page {
+  --radius-card: 48rpx;
+  --radius-control: 1998rpx;
+  --space-module: 48rpx;
+  --warning: #d9b66d;
+  --console-bg: #0b0f0b;
+  --console-surface: #141c13;
+  --console-raised: #182217;
+  --console-line: rgba(255, 255, 255, 0.08);
+  --console-text: #f4f5f0;
+  --console-muted: #8e9b8a;
+  --positive: #9fe870;
+  --negative: #f36673;
+  --action-bg: #9fe870;
+  --action-text: #132a00;
+  --focus: #9fe870;
+}

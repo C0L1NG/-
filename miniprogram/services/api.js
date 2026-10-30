@@ -1,4 +1,11 @@
 const { API_BASE_URL } = require("../config");
+const messages = {
+  INSUFFICIENT_BALANCE: "可用余额不足，或仍有退款待处理。",
+  REFUND_REVIEW_REQUIRED: "有退款正在核对，请等待核对完成后继续操作。",
+  VERIFIED_PAYOUT_ACCOUNT_REQUIRED: "请选择当前已核验的收款账户。",
+  IDEMPOTENCY_CONFLICT: "申请内容与原记录不一致，请先核对原申请结果。",
+  SESSION_REVOKED: "登录状态已失效，请重新登录。",
+};
 let loginFlight = null;
 let epoch = 0;
 let stopped = false;
@@ -16,6 +23,7 @@ function send(path, options = {}) {
     wx.request({
       url: `${API_BASE_URL}${path}`,
       method: options.method || "GET",
+      timeout: 15000,
       data: options.data,
       header: {
         Authorization: `Bearer ${options.token ?? (wx.getStorageSync("agent_access_token") || "")}`,
@@ -26,7 +34,11 @@ function send(path, options = {}) {
           ? resolve(data)
           : reject(
               Object.assign(
-                new Error(data.message || data.code || "请求失败"),
+                new Error(
+                  messages[data.code] ||
+                    data.message ||
+                    "请求未能完成，请稍后重试。",
+                ),
                 { statusCode, data },
               ),
             ),
@@ -59,6 +71,8 @@ function login(referralCode, renew = false) {
           .then((result) => {
             if (!current(attemptEpoch)) throw cancelled();
             wx.setStorageSync("agent_access_token", result.accessToken);
+            if (result.agent?.id)
+              wx.setStorageSync("agent_user_id", result.agent.id);
             resolve(result);
           })
           .catch(reject);

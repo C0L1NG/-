@@ -52,6 +52,7 @@ test("returning to every native financial page reloads the shared privacy settin
           id.endsWith("privacy") ? { syncPrivacy: () => syncs++ } : {},
         Page: (value) => (page = value),
         getApp: () => ({ ready: Promise.resolve() }),
+        wx: { getStorageSync() {} },
       },
     );
     page.load = page.reload = () => Promise.resolve();

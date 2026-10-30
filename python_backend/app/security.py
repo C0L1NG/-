@@ -4,6 +4,7 @@ import hmac
 import re
 import secrets
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -19,13 +20,20 @@ UUID_TEXT = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-async def require_role(
+@dataclass(frozen=True)
+class Identity:
+    user_id: uuid.UUID
+    role: UserRole
+    token_version: int
+
+
+async def require_identity(
     request: Request,
     session: AsyncSession,
     role: UserRole,
     audience: str,
     credentials: HTTPAuthorizationCredentials | None,
-) -> uuid.UUID:
+) -> Identity:
     bearer = (
         credentials.credentials if credentials and credentials.scheme.lower() == "bearer" else ""
     )
@@ -57,11 +65,41 @@ async def require_role(
     user = await session.get(User, uuid.UUID(subject))
     if user is None or user.is_active is False:
         raise APIError(401, "UNAUTHORIZED", "Account not found")
-    if claims.get("ver", 0) != (user.token_version or 0):
+    version = claims.get("ver", 0)
+    if type(version) is not int or version < 0 or version != (user.token_version or 0):
         raise APIError(401, "SESSION_REVOKED", "Please sign in again")
     if user.role != role:
         raise APIError(403, "FORBIDDEN", f"{role.name} access only")
-    return user.id
+    identity = Identity(user.id, role, version)
+    # Mutations own their service transaction. Release the identity read before
+    # they borrow a connection; ordinary GETs keep their consistent snapshot.
+    if request.method != "GET" or request.url.path == "/api/admin/commission-export":
+        await session.rollback()
+    return identity
+
+
+async def require_role(request, session, role, audience, credentials) -> uuid.UUID:
+    return (await require_identity(request, session, role, audience, credentials)).user_id
+
+
+async def current_agent_identity(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> Identity:
+    return await require_identity(
+        request, session, UserRole.AGENT, request.app.state.settings.jwt_audience, credentials
+    )
+
+
+async def current_admin_identity(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> Identity:
+    return await require_identity(
+        request, session, UserRole.ADMIN, request.app.state.settings.admin_jwt_audience, credentials
+    )
 
 
 async def current_agent_id(

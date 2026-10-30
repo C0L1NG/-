@@ -7,7 +7,6 @@ schema, so migrations and settlement never touch an application schema.
 import asyncio
 import uuid
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
@@ -22,8 +21,6 @@ from app.models import (
     User,
     Wallet,
 )
-
-MIGRATIONS = Path(__file__).resolve().parents[2] / "prisma/migrations"
 
 
 @pytest.mark.asyncio

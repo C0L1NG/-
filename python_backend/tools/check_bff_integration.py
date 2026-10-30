@@ -5,6 +5,7 @@ TEST_DATABASE_URL must end in _test. Node must be available on PATH.
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import shutil
@@ -25,7 +26,7 @@ from postgres_support import disposable_postgres  # noqa: E402
 from test_financial_lifecycle import SETTINGS, token  # noqa: E402
 
 from app.factory import create_app  # noqa: E402
-from app.models import User, UserRole  # noqa: E402
+from app.models import User, UserRole, Wallet  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 
@@ -83,17 +84,18 @@ async def run(output=None):
     async with disposable_postgres() as factory:
         async with factory() as session:
             async with session.begin():
-                session.add(
-                    User(
-                        role=UserRole.ADMIN,
-                        login_name="owner-bff-test",
-                        password_hash=hash_password("test-owner-password-123"),
-                    )
+                owner = User(
+                    role=UserRole.ADMIN,
+                    login_name="owner-bff-test",
+                    password_hash=hash_password("test-owner-password-123"),
                 )
+                session.add(owner)
                 agent = User(role=UserRole.AGENT, referral_code="BFF-LOGOUT-TEST")
                 session.add(agent)
                 await session.flush()
                 agent_id = agent.id
+                owner_id = owner.id
+                session.add(Wallet(user_id=agent_id))
         backend_port, web_port = free_port(), free_port()
         backend_url, web_url = f"http://127.0.0.1:{backend_port}", f"http://127.0.0.1:{web_port}"
         server = uvicorn.Server(
@@ -148,30 +150,59 @@ async def run(output=None):
                             await asyncio.sleep(0.1)
                     first_statuses = []
                     # Warm cookie, then fixed clients across the actual BFF gateway.
-                    for _ in range(21):
+                    # At most one natural-minute boundary in this short batch.
+                    for _ in range(41):
                         response = await first.post(
                             "/api/auth/admin/login",
                             json={"username": "wrong-bff-user", "password": "wrong"},
                             headers={"Origin": web_url},
                         )
                         first_statuses.append(response.status_code)
+                        if response.status_code == 429:
+                            break
                     good = await second.post(
                         "/api/auth/admin/login",
                         json={"username": "owner-bff-test", "password": "test-owner-password-123"},
                         headers={"Origin": web_url},
                     )
-                    assert first_statuses[:20] == [401] * 20 and first_statuses[20] == 429, (
-                        first_statuses
-                    )
+                    assert 20 <= len(first_statuses) - 1 <= 40
+                    assert first_statuses[:-1] == [401] * (len(first_statuses) - 1)
+                    assert first_statuses[-1] == 429, first_statuses
+                    rate_key = hashlib.sha256(
+                        (
+                            "bff:" + first.cookies.get("rate_client") + ":/api/auth/admin/login"
+                        ).encode()
+                    ).hexdigest()
+                    async with factory() as session:
+                        assert (
+                            await session.scalar(
+                                text("SELECT max(attempts) FROM auth_rate_limits WHERE key=:key"),
+                                {"key": rate_key},
+                            )
+                            == 21
+                        )
                     assert good.status_code == 200, good.text
                     assert good.json() == {"ok": True, "role": "admin"}
                     assert "HttpOnly" in good.headers["set-cookie"]
                     overview = await second.get("/api/admin/overview")
                     assert overview.status_code == 200, overview.text
                     assert "accessToken" not in good.text
+                    wallet = await second.get("/api/admin/wallet")
+                    assert wallet.status_code == 200 and wallet.headers["x-account-id"] == str(
+                        owner_id
+                    )
+                    oversized = await second.post(
+                        "/api/auth/admin/login",
+                        json={"username": "佣" * 3000, "password": "x"},
+                        headers={"Origin": web_url},
+                    )
+                    assert oversized.status_code == 413
                     evidence = {
                         "gateway": "real Next -> FastAPI -> PostgreSQL",
-                        "firstBrowser": {"failedLogins": 20, "nextStatus": first_statuses[-1]},
+                        "firstBrowser": {
+                            "failedLogins": len(first_statuses) - 1,
+                            "nextStatus": first_statuses[-1],
+                        },
                         "secondBrowser": {
                             "loginStatus": good.status_code,
                             "overviewStatus": overview.status_code,
@@ -179,6 +210,8 @@ async def run(output=None):
                         "tokenInBrowserJson": False,
                         "httpOnlyCookie": True,
                     }
+                    evidence["walletIdentityHeaderForwarded"] = True
+                    evidence["utf8BodyLimitStatus"] = oversized.status_code
                     evidence["recoveryWorkerFirstCycle"] = await check_worker(factory)
                     logout = await second.post(
                         "/api/auth/admin/logout", headers={"Origin": web_url}
@@ -194,6 +227,10 @@ async def run(output=None):
                     first.cookies.set(
                         "agent_access_token", token(agent_id), domain="127.0.0.1", path="/"
                     )
+                    agent_wallet = await first.get("/api/agent/wallet")
+                    assert agent_wallet.status_code == 200 and agent_wallet.headers[
+                        "x-account-id"
+                    ] == str(agent_id)
                     forbidden = await first.post(
                         "/api/agent/logout", headers={"Origin": "https://untrusted.invalid"}
                     )

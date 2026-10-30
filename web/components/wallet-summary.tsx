@@ -9,9 +9,11 @@ import { useLiveRefresh } from "./live-refresh";
 export function WalletSummary({
   demo = false,
   revision: parentRevision = 0,
+  hero = false,
 }: {
   demo?: boolean;
   revision?: number;
+  hero?: boolean;
 }) {
   const { revision, refresh } = useLiveRefresh(!demo);
   const [wallet, setWallet] = useState<WalletState | null>(null),
@@ -40,7 +42,13 @@ export function WalletSummary({
     return () => controller.abort();
   }, [demo, revision, parentRevision]);
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-[#121212] p-4">
+    <div
+      className={
+        hero
+          ? "console-wallet-hero"
+          : "rounded-xl border border-white/[0.08] bg-[#15181A] p-5"
+      }
+    >
       {error ? (
         <p role="alert" className="text-sm text-[#C5C5C5]">
           钱包余额暂时不可用{" "}
@@ -52,8 +60,8 @@ export function WalletSummary({
         <>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-[#929292]">实际可提现</p>
-              <p className="mt-2 break-all font-mono text-lg font-bold text-[var(--positive)]">
+              <p className="text-xs text-[#929292]">平台可用余额</p>
+              <p className="wallet-available financial-number mt-2 break-all text-lg font-semibold text-[var(--positive)]">
                 {displayAmount(wallet?.balance)}
               </p>
             </div>

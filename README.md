@@ -5,35 +5,38 @@
 ## 工程边界
 
 - `python_backend/`：现行后端，FastAPI + SQLAlchemy Async + PostgreSQL；业务写入集中在服务层，统计查询位于 `app/queries/`。
-- `prisma/`：数据库结构与 SQL 迁移的唯一来源。SQLAlchemy 映射已有表，不使用 `create_all()`，不使用 `db push` 替代迁移。
+- `python_backend/migrations/`：唯一数据库迁移入口，由 Alembic 管理；保留完整 SQL 基线、CHECK、索引和追加账触发器，不使用 `create_all()` 替代迁移。
 - `web/`：正式 Next.js 网页；`/admin/pc/`、`/admin/mobile/`、`/agent/` 隔离；`/login/` 签发 HttpOnly Cookie。后端再次检查角色和数据范围。
 - `miniprogram/`：代理原生微信端，首页 / 进展 / 明细 / 我的，团队、海报和提现为子页面。
 - `admin_miniprogram/`：老板原生微信端，大盘 / 团队 / 审计；通过单次登录码打开资金操作网页。
 - `showcase-template/`：可还原的静态展示入口；`showcase-site/` 是本地生成与发布工程，共享组件来自 `web/`。
-- `src/`、`tests/`：旧 TypeScript 实现与对照测试。启动入口已停用；旧服务不能处理新增退款与提现账本。
+- `design/tokens.json`：Web 与两套小程序共用的主题变量来源，通过 Python 脚本生成 CSS/WXSS。
+- 旧 Node API、Prisma 工具链已退出日常工程；旧金额结果保留为 Python fixture。历史实现可通过 Git `0a4342e` 查看。
 
 升级范围、资金接入条件与发布顺序见 [升级记录](docs/implementation/2026-10-03-upgrade.md)。原问题见 [审查报告](docs/reviews/2026-10-03-project-review.md)。
 
 ## 本地启动
 
-需要 PostgreSQL 16、Node.js 22、pnpm 11、Python 3.12+。
+需要 PostgreSQL 16、Node.js 22、pnpm 11.25、Python 3.12（CI 同时覆盖 3.14）。
 
 ```bash
 pnpm install --frozen-lockfile
-python3 -m venv python_backend/.venv
+python3.12 -m venv python_backend/.venv
 python_backend/.venv/bin/python -m pip install -r python_backend/requirements-dev.txt
 cp .env.example .env
 cp python_backend/.env.example python_backend/.env
 cp web/.env.example web/.env.local
-# 填写两个 .env 中相同的 DATABASE_URL，以及 Python JWT 参数
+# 填写相同的 DATABASE_URL、JWT 参数及 Next/Python 共用 BFF_CONTEXT_SECRET
+# 以下用于新空库。旧库先按运行手册完成备份、结构核对和接管。
 pnpm db:deploy
-pnpm db:generate
 cd python_backend
 .venv/bin/python tools/ops.py bootstrap-admin --username owner
 .venv/bin/uvicorn main:app --host 127.0.0.1 --port 3000
 ```
 
 另一个终端从根目录运行 `pnpm --dir web dev`，打开 `http://localhost:3001/login/`。管理员密码由命令行安全输入，至少 12 字符。代理从微信授权登录后在“我的”生成 60 秒单次网页登录码。Web BFF 的两个 API 地址必须指向同一个现行 Python 服务；生产设置 `WEB_ORIGIN=https://你的前端域名`，供反向代理下严格同源校验。
+
+资金恢复与对账单独运行：在 `python_backend/` 执行 `.venv/bin/python -m app.worker`。现有 Prisma 数据库先执行 `pnpm db:adopt`，核对通过后再 `pnpm db:deploy`；接管不重复建表或重复写入期初余额。流程见 [运行与迁移手册](docs/operations/runbook.md)。
 
 `http://localhost:3000/docs` 提供接口文档。`/health/live` 检查进程，`/health/ready` 检查数据库及平台钱包迁移。JWT、微信密钥和支付签名密钥仅放服务端环境变量，不能写入小程序或 `NEXT_PUBLIC_*`。
 
@@ -52,6 +55,8 @@ cd python_backend
 - 提现：代理 / 管理员 `POST /api/{agent|admin}/withdrawals`，先冻结余额；老板通过 `/api/admin/withdrawals/{id}/review` 开始处理、记录渠道成功或失败凭据。**本实现不会自动向银行或微信发起转账。**
 - 退款按原始流水冲正；已付出的佣金形成非负待追偿余额，后续收益和解冻资金优先抵扣。
 - 余额变化均记录不可修改的 `wallet_movements`；对账与结算恢复命令见后端指南。
+- 已接收的有效退款先建立付款保护；退款先到、支付后到时，在同一事务内终结退款，不释放中间可提现佣金。有效待核对退款会阻断相关代理及平台新的提现/付款认领，已发生的渠道付款仍按真实结果记账。
+- 提现响应未知时保留原编号、金额和账户，先查询或原样重试。不能通过换编号规避未知结果。收款账户按版本核验切换，历史提现保留原账户。
 
 支付网关必须先完成所选支付通道的原生验签，再转发签名事件。此接口不是微信支付 v3 的直接回调地址。实际商户收款、退款发起、自动付款和银行卡保管服务需要按选定渠道接入；不可用浏览器传入的“支付成功”代替。
 
@@ -62,17 +67,18 @@ pnpm contract:generate
 pnpm contract:check
 pnpm typecheck
 pnpm test
-pnpm test:tooling
-pnpm --dir web typecheck
 pnpm --dir web build
 pnpm format:check
-python_backend/.venv/bin/python -m ruff check python_backend scripts/configure-miniprogram.py
+pnpm design:check
+python_backend/.venv/bin/python -m ruff check python_backend scripts/configure-miniprogram.py scripts/generate-design-tokens.py
 # 必须是可删除测试库，库名以 _test 结尾
 cd python_backend
-TEST_DATABASE_URL='postgresql://USER:PASSWORD@localhost:5432/commission_test' .venv/bin/python -m pytest -q
+TEST_DATABASE_URL='postgresql://USER:PASSWORD@localhost:5432/commission_test' .venv/bin/python -m pytest -q --require-database
 ```
 
-集成测试创建临时 schema，应用全部 SQL 迁移后验证并发、异常回滚、退款、提现、RBAC 和报表，结束后删除 schema。未提供测试库时会跳过数据库测试，不能视为资金功能验收通过。CI 提供 PostgreSQL 并检查构建、格式和接口契约。
+集成测试创建临时 schema，运行真实 Alembic 迁移，结束后删除 schema。`--require-database` 在没有测试库或任何用例跳过时失败；快速单元检查可不加该参数。CI 还验证真实浏览器故障状态、Next → Python 鉴权链及测试库备份恢复。
+
+浏览器回归：构建 `web` 后执行 `python_backend/.venv/bin/python -m playwright install chromium`，再运行 `python_backend/.venv/bin/python python_backend/tools/check_ui.py`。浏览器使用受控 API 响应验证页面状态；真实数据库与 BFF 另有集成检查。
 
 ```bash
 pnpm showcase:prepare
@@ -94,6 +100,10 @@ python3 scripts/configure-miniprogram.py \
 示例 AppID 必须换为实际注册值。后端分别配置 `WECHAT_APP_*` 和 `ADMIN_WECHAT_APP_*`；在微信后台登记 request 合法域名和老板 web-view 业务域名。管理员微信登录仅允许预先关联的老板 open_id，不会自动注册管理员。代理扫码首绑与注册同事务，冷启动和热启动均等待绑定完成。
 
 两套工程均需在微信开发者工具和真机验证登录、扫码、太阳码、保存海报、后台恢复与网页桥接。手机网页预览或 JavaScript 模拟测试不能替代微信真机验收。
+
+## 本轮全面整改
+
+资金通知排序保护、会话撤销、逐笔对账、提现结果恢复、收款账户版本、页面资源隔离、任务 URL、运行状态与差异认领已纳入代码和回归。Alembic 接管、容器部署、备份恢复、性能基线及多端主题生成说明见 [整改交付记录](docs/implementation/2026-10-30-system-hardening.md) 和 [运行手册](docs/operations/runbook.md)。下方早期记录描述当时版本；旧路径以对应 Git 版本为准。
 
 
 ## 第二轮审查整改

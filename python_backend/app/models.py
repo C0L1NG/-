@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    Text,
     text,
 )
 from sqlalchemy.dialects.postgresql import ENUM, JSONB, TIMESTAMP, UUID
@@ -79,6 +80,7 @@ class User(Base):
         Index("users_parent_id_idx", "parent_id"),
         Index("users_wechat_open_id_key", "wechat_open_id", unique=True),
         Index("users_wechat_union_id_key", "wechat_union_id", unique=True),
+        CheckConstraint("token_version >= 0", name="users_token_version_check"),
     )
 
     id: Mapped[uuid.UUID] = uuid_id()
@@ -119,6 +121,14 @@ class Order(Base):
         Index("orders_order_no_key", "order_no", unique=True),
         Index("orders_customer_id_idx", "customer_id"),
         Index("orders_promoter_id_idx", "promoter_id"),
+        Index("orders_paid_at_idx", "paid_at", "id"),
+        Index("orders_settled_at_idx", "settled_at", "id"),
+        Index(
+            "orders_refund_pending_idx",
+            "promoter_id",
+            "attribution_parent_id",
+            postgresql_where=text("refund_pending"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = uuid_id()
@@ -154,6 +164,9 @@ class Order(Base):
     settled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True, precision=6))
     refunded_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True, precision=6))
     payment_reference: Mapped[str | None] = mapped_column(String(128), unique=True)
+    refund_pending: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     created_at: Mapped[datetime] = created_at()
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True, precision=6),
@@ -170,6 +183,7 @@ class Wallet(Base):
         CheckConstraint("frozen_balance >= 0", name="wallets_frozen_balance_nonnegative"),
         CheckConstraint("total_earned >= 0", name="wallets_total_earned_nonnegative"),
         Index("wallets_user_id_key", "user_id", unique=True),
+        CheckConstraint("debt_balance >= 0", name="wallets_debt_nonnegative"),
     )
 
     id: Mapped[uuid.UUID] = uuid_id()
@@ -247,6 +261,7 @@ class PlatformCommissionLog(Base):
             "commission_amount >= 0", name="platform_commission_logs_amount_nonnegative"
         ),
         Index("platform_commission_logs_order_id_key", "order_id", unique=True),
+        Index("platform_commission_logs_created_at_idx", "created_at", "id"),
     )
 
     id: Mapped[uuid.UUID] = uuid_id()
@@ -267,6 +282,13 @@ class PlatformCommissionLog(Base):
 
 class PlatformWallet(Base):
     __tablename__ = "platform_wallets"
+    __table_args__ = (
+        CheckConstraint("balance >= 0", name="platform_wallets_balance_check"),
+        CheckConstraint("frozen_balance >= 0", name="platform_wallets_frozen_balance_check"),
+        CheckConstraint("total_earned >= 0", name="platform_wallets_total_earned_check"),
+        CheckConstraint("debt_balance >= 0", name="platform_wallets_debt_balance_check"),
+        CheckConstraint("id = 'platform'", name="platform_wallets_id_check"),
+    )
     id: Mapped[str] = mapped_column(String(20), primary_key=True, server_default=text("'platform'"))
     balance: Mapped[Decimal] = mapped_column(
         Numeric(18, 2), nullable=False, server_default=text("0")
@@ -296,6 +318,17 @@ class WalletMovement(Base):
             "kind",
             "account_key",
             unique=True,
+        ),
+        Index("wallet_movements_account_time_idx", "account_key", "created_at", "id"),
+        Index("wallet_movements_user_kind_time_idx", "user_id", "kind", "created_at", "id"),
+        CheckConstraint("amount >= 0", name="wallet_movements_amount_check"),
+        CheckConstraint(
+            "kind IN ('opening','commission','refund','withdrawal_hold','withdrawal_paid','withdrawal_release')",
+            name="wallet_movements_kind_check",
+        ),
+        CheckConstraint(
+            "(user_id IS NULL AND account_key = 'platform') OR (user_id IS NOT NULL AND account_key = user_id::text)",
+            name="wallet_movements_check",
         ),
     )
     id: Mapped[uuid.UUID] = uuid_id()
@@ -332,11 +365,20 @@ class PaymentEvent(Base):
     created_at: Mapped[datetime] = created_at()
     __table_args__ = (
         Index("payment_events_provider_event_key", "provider", "event_id", unique=True),
+        CheckConstraint(
+            "event_type IN ('paid','refunded')", name="payment_events_event_type_check"
+        ),
     )
 
 
 class Refund(Base):
     __tablename__ = "refunds"
+    __table_args__ = (
+        Index("refunds_created_at_idx", "created_at", "id"),
+        CheckConstraint("total_amount >= 0", name="refunds_total_amount_check"),
+        CheckConstraint("platform_amount >= 0", name="refunds_platform_amount_check"),
+        CheckConstraint("agent_amount >= 0", name="refunds_agent_amount_check"),
+    )
     id: Mapped[uuid.UUID] = uuid_id()
     order_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -366,8 +408,34 @@ class PayoutAccount(Base):
     )
     verification_reference: Mapped[str | None] = mapped_column(String(128))
     created_at: Mapped[datetime] = created_at()
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'pending'")
+    )
+    replaces_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("payout_accounts.id", ondelete="RESTRICT")
+    )
+    rejection_reason: Mapped[str | None] = mapped_column(String(256))
     __table_args__ = (
-        Index("payout_accounts_user_provider_key", "user_id", "provider", unique=True),
+        Index(
+            "payout_accounts_active_key",
+            "user_id",
+            "provider",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+        Index(
+            "payout_accounts_pending_key",
+            "user_id",
+            "provider",
+            "account_reference",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+        CheckConstraint("provider IN ('wechat','bank')", name="payout_accounts_provider_check"),
+        CheckConstraint(
+            "status IN ('pending','active','retired','rejected')",
+            name="payout_accounts_status_check",
+        ),
     )
 
 
@@ -404,11 +472,24 @@ class Withdrawal(Base):
     )
     __table_args__ = (
         Index("withdrawals_user_idempotency_key", "user_id", "idempotency_key", unique=True),
+        Index("withdrawals_status_created_at_idx", "status", "created_at", "id"),
+        CheckConstraint(
+            "account_scope IN ('agent','platform')", name="withdrawals_account_scope_check"
+        ),
+        CheckConstraint("amount > 0", name="withdrawals_amount_check"),
+        CheckConstraint(
+            "status IN ('pending','processing','paid','rejected')", name="withdrawals_status_check"
+        ),
+        CheckConstraint("version >= 0", name="withdrawals_version_check"),
     )
 
 
 class WebLoginTicket(Base):
     __tablename__ = "web_login_tickets"
+    __table_args__ = (
+        Index("web_login_tickets_expiry_idx", "expires_at"),
+        CheckConstraint("role IN ('admin','agent')", name="web_login_tickets_role_check"),
+    )
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
@@ -441,6 +522,10 @@ class WithdrawalAction(Base):
         Index(
             "withdrawal_actions_withdrawal_id_version_key", "withdrawal_id", "version", unique=True
         ),
+        CheckConstraint(
+            "action IN ('start','confirm','reject')", name="withdrawal_actions_action_check"
+        ),
+        CheckConstraint("version > 0", name="withdrawal_actions_version_check"),
     )
 
 
@@ -461,11 +546,58 @@ class PaymentInbox(Base):
     processed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True, precision=6))
     __table_args__ = (
         Index("payment_inbox_provider_event_id_key", "provider", "event_id", unique=True),
+        Index(
+            "payment_inbox_retry_idx",
+            "next_attempt_at",
+            "created_at",
+            "id",
+            postgresql_where=text("status <> 'processed'"),
+        ),
+        Index(
+            "payment_inbox_order_type_idx",
+            text("(payload->>'orderId')"),
+            text("(payload->>'type')"),
+        ),
+        CheckConstraint(
+            "status IN ('pending','failed','processed')", name="payment_inbox_status_check"
+        ),
+        CheckConstraint("attempts >= 0", name="payment_inbox_attempts_check"),
     )
 
 
 class AuthRateLimit(Base):
     __tablename__ = "auth_rate_limits"
+    __table_args__ = (
+        Index("auth_rate_limits_window_idx", "window_start"),
+        CheckConstraint("attempts > 0", name="auth_rate_limits_attempts_check"),
+    )
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     window_start: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class WorkerHealth(Base):
+    __tablename__ = "worker_health"
+    name: Mapped[str] = mapped_column(String(80), primary_key=True)
+    last_success_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(80))
+    updated_at: Mapped[datetime] = created_at()
+
+
+class ReconciliationCase(Base):
+    __tablename__ = "reconciliation_cases"
+    __table_args__ = (
+        Index("reconciliation_cases_status_idx", "status", "last_seen_at", "id"),
+        CheckConstraint(
+            "status IN ('open','acknowledged','resolved')", name="reconciliation_cases_status_check"
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    detail: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'open'"))
+    first_seen_at: Mapped[datetime] = created_at()
+    last_seen_at: Mapped[datetime] = created_at()
+    acknowledged_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))

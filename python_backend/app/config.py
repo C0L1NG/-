@@ -43,6 +43,15 @@ class Settings:
         return values
 
     def validate(self) -> None:
+        for name, value in (
+            ("JWT_SECRET", self.jwt_secret),
+            ("BFF_CONTEXT_SECRET", self.bff_context_secret),
+            ("PAYMENT_WEBHOOK_SECRET", self.payment_webhook_secret),
+        ):
+            if any(marker in value.lower() for marker in ("replace-with", "change-me", "changeme")):
+                raise ValueError(
+                    f"{name} must be a private random secret, not an example placeholder"
+                )
         if not self.database_url.startswith(("postgresql://", "postgresql+asyncpg://")):
             raise ValueError("DATABASE_URL must be a PostgreSQL URL")
         if len(self.jwt_secret) < 32:

@@ -9,9 +9,11 @@ const check = process.argv.includes("--check");
 const source = path.join(root, "web");
 const target = path.join(root, "showcase-site");
 const shared = [
+  "public/fonts",
   "components",
   "lib",
   "app/globals.css",
+  "app/design-tokens.css",
   "app/agent/agent-theme.css",
 ];
 const excluded = new Set([

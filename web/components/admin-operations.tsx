@@ -14,10 +14,12 @@ export function AdminOperations({
   demo = false,
   onSelect,
   refreshKey = 0,
+  compact = false,
 }: {
   demo?: boolean;
   onSelect: (focus: TreasuryFocus) => void;
   refreshKey?: number;
+  compact?: boolean;
 }) {
   const { revision, refresh } = useLiveRefresh(!demo);
   const [data, setData] = useState<OperationsSummary | null>(null),
@@ -79,8 +81,11 @@ export function AdminOperations({
     },
   ];
   return (
-    <section aria-label="资金待办" className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <section
+      aria-label="资金待办"
+      className={compact ? "console-queue space-y-3" : "space-y-3"}
+    >
+      <div className="queue-heading flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-bold">资金待办</h2>
         <RefreshStatus demo={demo} busy={loading} at={at} onRefresh={refresh} />
       </div>
@@ -92,14 +97,14 @@ export function AdminOperations({
           {error}
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="queue-list grid grid-cols-2 gap-3 lg:grid-cols-4">
           {entries.map((entry) => (
             <button
               key={entry.label}
               type="button"
               disabled={!data}
               onClick={() => onSelect({ ...entry.focus, nonce: Date.now() })}
-              className="rounded-lg border border-white/[0.08] bg-[#121212] p-4 text-left transition-colors hover:bg-[#1C1C1C] disabled:opacity-50"
+              className="queue-item rounded-lg border border-white/[0.08] bg-[#121212] p-4 text-left transition-colors hover:bg-[#1C1C1C] disabled:opacity-50"
             >
               <span className="flex items-center justify-between gap-2 text-xs text-[#929292]">
                 {entry.label}

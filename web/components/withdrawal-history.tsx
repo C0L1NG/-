@@ -16,10 +16,12 @@ export function WithdrawalHistory({
   scope = "agent",
   hidden = false,
   demoItems,
+  refreshKey = 0,
 }: {
   scope?: "agent" | "admin";
   hidden?: boolean;
   demoItems?: WithdrawalData[];
+  refreshKey?: number;
 }) {
   const [page, setPage] = useState(1);
   const { revision, refresh } = useLiveRefresh(!demoItems);
@@ -55,7 +57,7 @@ export function WithdrawalHistory({
         if (!controller.signal.aborted) setError(e.message);
       });
     return () => controller.abort();
-  }, [scope, page, revision, demoItems]);
+  }, [scope, page, revision, demoItems, refreshKey]);
   return (
     <section className="mt-7 border-t border-[var(--agent-line,rgba(255,255,255,.1))] pt-5">
       <h3 className="text-sm font-bold text-[var(--agent-text,#F5F5F5)]">

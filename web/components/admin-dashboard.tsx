@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
   Download,
@@ -32,7 +32,11 @@ import { RefreshStatus, useLiveRefresh } from "./live-refresh";
 import { DateFilter } from "./date-filter";
 import type { DateBounds } from "@/lib/date-range";
 
-type Workspace = "overview" | "network" | "audit" | "treasury";
+import {
+  readConsoleLocation,
+  writeConsoleLocation,
+  type Workspace,
+} from "@/lib/console-location";
 const sections = [
   { id: "overview", label: "资金总览", Icon: LayoutGrid },
   { id: "network", label: "代理网络", Icon: Network },
@@ -65,16 +69,52 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
   const [twoLevel, setTwoLevel] = useState(true);
   const auditFilters =
     view === "audit" ? { q: search, ...bounds } : { period, q: search };
+  const restoringLocation = useRef(true);
+  const [locationReady, setLocationReady] = useState(false);
   useEffect(() => {
+    const restore = () => {
+      restoringLocation.current = true;
+      const saved = readConsoleLocation(
+        new URL(window.location.href).searchParams,
+      );
+      setView(saved.view);
+      setPeriod(saved.period);
+      setPage(saved.page);
+      setQuery(saved.q);
+      setSearch(saved.q);
+      setBounds(saved.bounds);
+      setLocationReady(true);
+    };
+    restore();
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
+  useEffect(() => {
+    if (query.trim() === search) return;
     const timer = setTimeout(() => {
       setSearch(query.trim());
       setPage(1);
     }, 250);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, search]);
   useEffect(() => {
-    setPage(1);
-  }, [period, bounds, revision]);
+    if (!restoringLocation.current) setPage(1);
+  }, [period, bounds]);
+  useEffect(() => {
+    if (!locationReady) return;
+    if (restoringLocation.current) {
+      restoringLocation.current = false;
+      return;
+    }
+    const url = writeConsoleLocation(new URL(window.location.href), {
+      view,
+      period,
+      page,
+      q: search,
+      bounds,
+    });
+    window.history.replaceState(null, "", url);
+  }, [locationReady, view, period, page, search, bounds]);
   useEffect(() => {
     if (demo) {
       setOverview(
@@ -174,6 +214,14 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
   }
   function switchView(next: Workspace) {
     if (next === view) return;
+    const url = writeConsoleLocation(new URL(window.location.href), {
+      view: next,
+      period,
+      page: 1,
+      q: search,
+      bounds: {},
+    });
+    window.history.pushState(null, "", url);
     setView(next);
     setPage(1);
     setBounds({});
@@ -278,15 +326,21 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
     </section>
   );
   return (
-    <div className="min-h-dvh bg-[#0A0A0A] text-[#F5F5F5]">
-      <header className="sticky top-0 z-30 border-b border-[#262626] bg-[#090909]/95 backdrop-blur-md">
+    <div className="console-app min-h-dvh bg-[var(--console-bg)] text-[#F5F5F5]">
+      <header className="console-topbar sticky top-0 z-30 border-b border-[#262626] bg-[var(--console-bg)]/90 backdrop-blur-md">
         <div className="mx-auto flex min-h-16 max-w-[1680px] items-center justify-between gap-4 px-6 lg:px-10">
           <div className="flex items-center gap-4">
-            <span className="text-xl font-bold tracking-[-.06em]">
-              CONSOLE<span className="ml-1 text-[#C5FF59]">▰</span>
+            <span className="flex items-center gap-3 text-base font-semibold tracking-[-.03em]">
+              <span className="console-symbol" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
+              CONSOLE
             </span>
             <span className="hidden border-l border-[#343434] pl-4 text-xs text-[#949494] sm:block">
-              分润平台 · 管理中心
+              平台资金工作台
             </span>
           </div>
           <div className="flex items-center gap-5 text-xs text-[#AAA]">
@@ -317,11 +371,8 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-[1680px] px-6 pb-10 lg:px-10">
-        <nav
-          aria-label="老板工作区导航"
-          className="flex gap-8 overflow-x-auto border-b border-[#262626]"
-        >
+      <div className="console-content mx-auto max-w-[1680px] px-6 pb-10 lg:px-10">
+        <nav aria-label="老板工作区导航" className="console-nav">
           {sections.map(({ id, label, Icon }) => (
             <button
               key={id}
@@ -335,9 +386,9 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
             </button>
           ))}
         </nav>
-        <div className="mb-7 mt-8 flex flex-wrap items-center justify-between gap-4">
+        <div className="console-heading mb-7 mt-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs text-[#787878]">
+            <p className="console-breadcrumb text-xs text-[#787878]">
               管理中心 <span className="mx-2">/</span> {title}
             </p>
             <h1 className="mt-2 text-[28px] font-semibold tracking-tight">
@@ -378,11 +429,32 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
         )}
         {view === "overview" && (
           <>
+            <div className="console-command-grid">
+              <div className="console-asset">
+                <WalletSummary demo={demo} revision={revision} hero />
+                <button
+                  className="exchange-primary"
+                  onClick={() => switchView("treasury")}
+                >
+                  管理平台资金
+                  <ArrowUpRight size={16} />
+                </button>
+              </div>
+              <AdminOperations
+                demo={demo}
+                refreshKey={revision}
+                compact
+                onSelect={(focus) => {
+                  setTreasuryFocus(focus);
+                  switchView("treasury");
+                }}
+              />
+            </div>
             {overviewError ? (
               errorPanel(overviewError)
             ) : (
-              <section className="grid border-y border-[#262626] lg:grid-cols-[1.25fr_1.75fr]">
-                <article className="py-7 lg:border-r lg:border-[#262626] lg:pr-10">
+              <section className="console-metrics grid lg:grid-cols-[1fr_2fr]">
+                <article className="console-revenue min-w-0 p-5">
                   <div className="flex items-center gap-3 text-sm text-[#999]">
                     平台净收益
                     <span className="rounded border border-[#353535] px-1.5 py-0.5 font-mono text-[11px] text-white">
@@ -392,7 +464,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
                   {overviewLoading ? (
                     <Skeleton className="mt-5 h-14 w-64" />
                   ) : (
-                    <p className="financial-number mt-4 font-mono text-[clamp(28px,3.2vw,49px)] font-semibold">
+                    <p className="financial-number mt-4 text-[clamp(22px,2vw,32px)] font-medium">
                       {displayAmount(overview?.platformTotalRevenue)}
                     </p>
                   )}
@@ -402,14 +474,14 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
                     {period === "all" ? "累计净收益" : "本月净收益"}
                   </p>
                   <button
-                    className="mt-6 flex min-h-9 items-center gap-2 text-sm font-medium"
+                    className="console-revenue-action mt-6 flex min-h-9 items-center gap-2 text-sm font-medium"
                     onClick={() => switchView("treasury")}
                   >
                     管理资金与提现
                     <ArrowUpRight size={16} />
                   </button>
                 </article>
-                <div className="grid grid-cols-1 sm:grid-cols-3 lg:pl-8">
+                <div className="grid grid-cols-1 sm:grid-cols-3">
                   {[
                     {
                       label: "全网净成交 GMV",
@@ -429,13 +501,13 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
                   ].map((metric) => (
                     <article
                       key={metric.label}
-                      className="min-w-0 py-7 sm:px-4"
+                      className="console-metric min-w-0 p-5"
                     >
                       <p className="text-sm text-[#999]">{metric.label}</p>
                       {overviewLoading ? (
                         <Skeleton className="mt-7 h-8 w-full" />
                       ) : (
-                        <p className="financial-number mt-7 font-mono text-[clamp(17px,1.6vw,28px)] font-semibold">
+                        <p className="financial-number mt-4 text-[clamp(19px,1.6vw,27px)] font-medium">
                           {metric.value}
                         </p>
                       )}
@@ -447,12 +519,11 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
                 </div>
               </section>
             )}
-            <div className="my-7 grid items-stretch gap-5 lg:grid-cols-[1fr_1fr]">
-              <WalletSummary demo={demo} revision={revision} />
-              <section
-                aria-label="分润规则"
-                className="rounded-lg border border-[#262626] bg-[#101010] p-5"
-              >
+            <details className="console-rules">
+              <summary>
+                分润规则与统计口径 <span>30% 平台 · 70% 代理奖金池</span>
+              </summary>{" "}
+              <section aria-label="分润规则" className="p-5">
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="text-sm font-medium">分润规则</h2>
                   <div className="flex gap-3 text-xs">
@@ -513,16 +584,8 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
                   按订单利润分配，尾差按结算规则处理。
                 </p>
               </section>
-            </div>
-            <AdminOperations
-              demo={demo}
-              refreshKey={revision}
-              onSelect={(focus) => {
-                setTreasuryFocus(focus);
-                setView("treasury");
-              }}
-            />
-            <div className="mt-8">{auditSection}</div>
+            </details>
+            <div className="console-audit mt-6">{auditSection}</div>
           </>
         )}
         {view === "network" && (
@@ -540,6 +603,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
             <AdminTreasury
               demo={demo}
               focus={treasuryFocus}
+              refreshKey={revision}
               onComplete={retry}
             />
           </div>
