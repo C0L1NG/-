@@ -6,7 +6,7 @@ import type { LedgerItem } from "@/lib/types";
 import { displayAmount } from "@/lib/money";
 
 export const panel =
-  "rounded-xl border border-[var(--agent-line)] bg-[var(--agent-surface)]";
+  "rounded-[28px] border border-transparent bg-[var(--agent-surface)]";
 export function Skeleton({ className = "" }: { className?: string }) {
   return (
     <span
@@ -77,8 +77,8 @@ export function LedgerRow({
         <span className="mt-1.5 block text-[12px] leading-5 text-[var(--agent-muted)]">
           {item.ratePercent}% {own ? "自身出单" : "团队奖励"} ·{" "}
           {item.settlementStatus === "REVERSED" ? "已冲正" : "已结算"}
-          <span className="ml-1 text-[11px]">
-            · {item.settledAt.slice(11, 16)} UTC
+          <span className="ml-1 inline-block whitespace-nowrap text-[11px]">
+            · {item.settledAt.slice(5, 10)} {item.settledAt.slice(11, 16)} UTC
           </span>
         </span>
       </span>

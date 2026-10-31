@@ -108,7 +108,7 @@ export function AdminMobileAudit() {
         <h1 className="mt-3 text-[26px] font-semibold tracking-tight">
           资金流审计
         </h1>
-        <p className="mt-2 text-[12px] leading-5 text-[#929292]">
+        <p className="mt-2 text-[12px] leading-5 text-[var(--console-muted)]">
           每笔订单的利润与三方分账，展开即见。
         </p>
       </header>
@@ -124,8 +124,8 @@ export function AdminMobileAudit() {
           }}
         />
       </div>
-      <label className="mb-4 flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#121212] px-4">
-        <Search size={16} className="text-[#929292]" />
+      <label className="mb-4 flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[var(--console-surface)] px-4">
+        <Search size={16} className="text-[var(--console-muted)]" />
         <input
           aria-label="搜索审计订单或出单人"
           maxLength={80}
@@ -157,7 +157,7 @@ export function AdminMobileAudit() {
         {error ? (
           <div
             role="alert"
-            className="rounded-xl bg-white/5 p-5 text-sm text-[#929292]"
+            className="rounded-xl bg-white/5 p-5 text-sm text-[var(--console-muted)]"
           >
             {error}
             <button className="ml-3 text-[var(--positive)]" onClick={refresh}>
@@ -192,7 +192,8 @@ export function AdminMobileAudit() {
         ) : (
           <p
             className={
-              surface + " px-5 py-12 text-center text-[12px] text-[#929292]"
+              surface +
+              " px-5 py-12 text-center text-[12px] text-[var(--console-muted)]"
             }
           >
             暂无订单流水。
@@ -204,7 +205,7 @@ export function AdminMobileAudit() {
           type="button"
           disabled={loading || Boolean(error)}
           onClick={() => setPage((value) => value + 1)}
-          className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/[0.08] bg-[#121212] text-[12px] font-bold disabled:opacity-50"
+          className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/[0.08] bg-[var(--console-surface)] text-[12px] font-bold disabled:opacity-50"
         >
           {loading ? "正在加载…" : "查看更多订单"}
           <ArrowDown size={15} />
@@ -259,7 +260,9 @@ function AuditCard({
         </div>
         <div className="mt-5 flex items-end justify-between">
           <span>
-            <span className="block text-xs text-[#929292]">订单利润池 X</span>
+            <span className="block text-xs text-[var(--console-muted)]">
+              订单利润池 X
+            </span>
             <span className="mt-1.5 block font-mono text-[23px] font-bold tracking-[-0.065em]">
               {displayAmount(item.profitAmount)}
             </span>
@@ -279,7 +282,7 @@ function AuditCard({
       </button>
       {open && (
         <div className="border-t border-white/[0.06] px-4 pb-5 pt-4">
-          <p className="mb-3 text-[12px] text-[#929292]">
+          <p className="mb-3 text-[12px] text-[var(--console-muted)]">
             资金流向 · 平台 / 出单人 / 直属导师
           </p>
           <div className="space-y-2">
@@ -310,7 +313,7 @@ function AuditCard({
             </span>
           </p>
           {reversed && (
-            <p className="mt-3 text-sm leading-6 text-[#929292]">
+            <p className="mt-3 text-sm leading-6 text-[var(--console-muted)]">
               本单已退款，展示原始分账；净收益已扣回。
             </p>
           )}
@@ -333,7 +336,7 @@ function SplitRow({
   reversed?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-white/[0.05] bg-[#0D0D0D] px-4 py-3">
+    <div className="flex items-center gap-3 rounded-lg border border-white/[0.05] bg-[var(--console-bg)] px-4 py-3">
       <span
         className={
           "h-2 w-2 shrink-0 rounded-full " +
@@ -342,7 +345,9 @@ function SplitRow({
       />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-bold">{label}</span>
-        <span className="mt-1 block text-[12px] text-[#929292]">{detail}</span>
+        <span className="mt-1 block text-[12px] text-[var(--console-muted)]">
+          {detail}
+        </span>
       </span>
       <span
         className={

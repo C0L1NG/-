@@ -80,6 +80,10 @@ export function AdminOperations({
       focus: { tab: "account" } as TreasuryFocus,
     },
   ];
+  const clear =
+    data &&
+    entries.every((entry) => entry.count === 0) &&
+    data.pendingPaymentEvents === 0;
   return (
     <section
       aria-label="资金待办"
@@ -92,10 +96,21 @@ export function AdminOperations({
       {error ? (
         <p
           role="alert"
-          className="rounded-lg border border-white/10 bg-[#121212] p-4 text-sm text-[#C5C5C5]"
+          className="rounded-lg border border-white/10 bg-[var(--console-surface)] p-4 text-sm text-[var(--console-text)]"
         >
           {error}
         </p>
+      ) : clear && compact ? (
+        <div className="queue-clear">
+          <span className="queue-health-dot" />
+          <strong>当前没有待处理事项</strong>
+          <p>提现、收款账户与支付通知均已处理。</p>
+          <button
+            onClick={() => onSelect({ tab: "review", nonce: Date.now() })}
+          >
+            查看处理记录 ↗
+          </button>
+        </div>
       ) : (
         <div className="queue-list grid grid-cols-2 gap-3 lg:grid-cols-4">
           {entries.map((entry) => (
@@ -104,9 +119,9 @@ export function AdminOperations({
               type="button"
               disabled={!data}
               onClick={() => onSelect({ ...entry.focus, nonce: Date.now() })}
-              className="queue-item rounded-lg border border-white/[0.08] bg-[#121212] p-4 text-left transition-colors hover:bg-[#1C1C1C] disabled:opacity-50"
+              className="queue-item rounded-3xl border border-transparent bg-[var(--console-surface)] p-4 text-left transition-colors hover:bg-[var(--console-raised)] disabled:opacity-50"
             >
-              <span className="flex items-center justify-between gap-2 text-xs text-[#929292]">
+              <span className="flex items-center justify-between gap-2 text-xs text-[var(--console-muted)]">
                 {entry.label}
                 <ArrowUpRight size={14} />
               </span>

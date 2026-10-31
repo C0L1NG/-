@@ -221,7 +221,7 @@ export function AgentProfile() {
 
       <section
         id="invite"
-        className="mt-7 scroll-mt-7 rounded-2xl border border-[var(--agent-line)] bg-[var(--agent-surface)] p-6"
+        className="mt-7 scroll-mt-7 rounded-[28px] border border-transparent bg-[var(--agent-surface)] p-6"
       >
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--agent-accent-text)]">
@@ -262,7 +262,7 @@ export function AgentProfile() {
             type="button"
             onClick={copyInvite}
             disabled={!referral || !canRecruit}
-            className="flex h-11 items-center justify-center gap-1.5 rounded-lg bg-[var(--action-bg)] text-[13px] font-semibold text-[var(--action-text)] disabled:opacity-50"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-full bg-[var(--action-bg)] text-[13px] font-semibold text-[var(--action-text)] disabled:opacity-50"
           >
             <Copy size={14} />
             复制链接
@@ -271,7 +271,7 @@ export function AgentProfile() {
             type="button"
             onClick={shareInvite}
             disabled={!referral || !canRecruit}
-            className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-[var(--agent-line)] bg-white/[0.06] text-[13px] font-semibold text-[var(--agent-text)] disabled:opacity-50"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-full border border-[var(--agent-line)] bg-white/[0.06] text-[13px] font-semibold text-[var(--agent-text)] disabled:opacity-50"
           >
             <Share2 size={14} />
             分享邀请
@@ -281,7 +281,7 @@ export function AgentProfile() {
           type="button"
           onClick={openPoster}
           disabled={!canRecruit || !referral}
-          className="mt-2.5 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[var(--agent-line)] text-[13px] font-bold text-[var(--agent-text)] disabled:opacity-40"
+          className="mt-2.5 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--agent-line)] text-[13px] font-bold text-[var(--agent-text)] disabled:opacity-40"
         >
           <QrCode size={15} />
           生成微信太阳码海报 <ArrowRight size={14} />
@@ -446,7 +446,7 @@ export function AgentProfile() {
             <a
               href={code.imageDataUrl}
               download="agent-wechat-code.png"
-              className="mt-4 flex h-12 items-center justify-center rounded-lg bg-[var(--action-bg)] text-[12px] font-extrabold text-[var(--action-text)]"
+              className="mt-4 flex h-12 items-center justify-center rounded-full bg-[var(--action-bg)] text-[12px] font-extrabold text-[var(--action-text)]"
             >
               保存太阳码
             </a>
@@ -474,7 +474,7 @@ export function AgentProfile() {
             type="button"
             onClick={logout}
             disabled={loggingOut}
-            className="mt-5 h-12 w-full rounded-lg bg-[var(--action-bg)] text-[12px] font-extrabold text-[var(--action-text)] disabled:opacity-60"
+            className="mt-5 h-12 w-full rounded-full bg-[var(--action-bg)] text-[12px] font-extrabold text-[var(--action-text)] disabled:opacity-60"
           >
             {loggingOut ? "正在退出…" : "确认退出"}
           </button>

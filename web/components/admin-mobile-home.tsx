@@ -39,19 +39,21 @@ export function AdminMobileHome() {
   }
   return (
     <>
-      <header className="flex items-center justify-between border-b border-[#262626] pb-5">
+      <header className="owner-header flex items-center justify-between pb-5">
         <div>
           <span className="text-lg font-bold tracking-tight">
-            CONSOLE<span className="ml-1 text-[#C5FF59]">▰</span>
+            CONSOLE<span className="ml-1 text-[var(--positive)]">▰</span>
           </span>
-          <p className="mt-1 text-xs text-[#929292]">老板总控 · 超级管理员</p>
+          <p className="mt-1 text-xs text-[var(--console-muted)]">
+            老板总控 · 超级管理员
+          </p>
         </div>
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252525] text-xs font-semibold">
           老板
         </span>
       </header>
-      <section aria-label="平台净收益池" className="py-7">
-        <h1 className="text-sm font-normal text-[#999]">
+      <section aria-label="平台净收益池" className="owner-balance py-7">
+        <h1 className="text-sm font-normal text-[var(--console-muted)]">
           平台净收益{" "}
           <span className="ml-2 rounded border border-[#333] px-1.5 py-0.5 font-mono text-[11px] text-white">
             30%
@@ -61,7 +63,7 @@ export function AdminMobileHome() {
           <Skeleton className="mt-4 h-12 w-64" />
         ) : (
           <p
-            className="financial-number mt-4 font-mono font-semibold leading-tight"
+            className="financial-number mt-4 font-sans font-semibold leading-tight"
             style={{
               fontSize: `clamp(22px, ${Math.min(10.5, 118 / amount.length)}vw, 44px)`,
             }}
@@ -70,7 +72,7 @@ export function AdminMobileHome() {
             {amount}
           </p>
         )}
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-[#929292]">
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-[var(--console-muted)]">
           <ShieldCheck size={13} className="text-[var(--positive)]" />
           累计净分成 · 已扣除退款冲正
         </p>
@@ -101,27 +103,29 @@ export function AdminMobileHome() {
           onRefresh={refresh}
         />
       </div>
-      <section className="mt-6 border-y border-[#262626] py-5">
+      <section className="owner-day mt-6 py-5">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">今日运行</h2>
-          <span className="text-[11px] text-[#777]">UTC 今日</span>
+          <span className="text-[11px] text-[var(--console-dim)]">
+            UTC 今日
+          </span>
         </div>
         <div className="mt-5">
-          <p className="text-xs text-[#929292]">平台抽成收入</p>
+          <p className="text-xs text-[var(--console-muted)]">平台抽成收入</p>
           <p className="financial-number mt-2 font-mono text-2xl font-semibold text-[var(--positive)]">
             {loading ? "—" : displayAmount(day?.platformTotalRevenue)}
           </p>
         </div>
         <div className="mt-5 grid grid-cols-2 divide-x divide-[#292929]">
           <div>
-            <p className="text-xs text-[#929292]">全网成单</p>
+            <p className="text-xs text-[var(--console-muted)]">全网成单</p>
             <p className="mt-2 font-mono text-xl">
               {day?.paidOrderCount ?? "—"}
               <span className="ml-2 text-xs text-[#888]">笔</span>
             </p>
           </div>
           <div className="pl-5">
-            <p className="text-xs text-[#929292]">活跃出单代理</p>
+            <p className="text-xs text-[var(--console-muted)]">活跃出单代理</p>
             <p className="mt-2 font-mono text-xl">
               {day?.activePromoterCount ?? "—"}
               <span className="ml-2 text-xs text-[#888]">人</span>
@@ -162,7 +166,7 @@ export function AdminMobileHome() {
             key={item.label}
             className="flex items-center justify-between gap-3 border-b border-[#262626] py-4 text-sm"
           >
-            <span className="text-[#929292]">{item.label}</span>
+            <span className="text-[var(--console-muted)]">{item.label}</span>
             <strong className="break-all text-right font-mono text-sm font-medium">
               {displayAmount(item.value)}
             </strong>

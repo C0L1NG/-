@@ -6,7 +6,7 @@ on:
 
 jobs:
   python-and-contract:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python: ["3.12", "3.14"]
@@ -60,11 +60,13 @@ jobs:
         if: matrix.python == '3.12'
       - run: python python_backend/tools/check_ui.py
         if: matrix.python == '3.12'
+      - run: python python_backend/tools/check_review7_ui.py
+        if: matrix.python == '3.12'
       - run: python python_backend/tools/check_network_refresh.py
         if: matrix.python == '3.12'
 
   typescript:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/commission_test
     steps:

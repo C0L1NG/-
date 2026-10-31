@@ -72,6 +72,7 @@ async def today_estimate(session, agent_id):
         select(func.sum(amount)).where(
             Order.payment_status == PaymentStatus.PAID,
             Order.settlement_status == SettlementStatus.PENDING,
+            Order.refund_pending.is_(False),
             *in_period(Order.paid_at, window),
             or_(Order.promoter_id == agent_id, Order.attribution_parent_id == agent_id),
         )

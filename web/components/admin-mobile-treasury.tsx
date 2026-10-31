@@ -28,7 +28,7 @@ export function AdminMobileTreasury() {
     <>
       <Link
         href="/admin/mobile/"
-        className="mb-5 inline-flex min-h-11 items-center gap-2 text-sm text-[#929292]"
+        className="mb-5 inline-flex min-h-11 items-center gap-2 text-sm text-[var(--console-muted)]"
       >
         <ArrowLeft size={16} />
         返回大盘

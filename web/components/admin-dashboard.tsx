@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { AdminMetrics } from "./admin-metrics";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
@@ -10,7 +11,6 @@ import {
   Wallet,
   Search,
   LogOut,
-  ShieldCheck,
   Smartphone,
 } from "lucide-react";
 import { adminGet } from "@/lib/admin-api";
@@ -25,7 +25,6 @@ import { AdminTreasury } from "./admin-treasury";
 import { AdminAuditTable } from "./admin-audit-table";
 import { exportAdminAudit } from "@/lib/admin-export";
 import { filteredDemoAudit } from "@/lib/admin-filters";
-import { displayAmount } from "@/lib/money";
 import { AdminOperations, type TreasuryFocus } from "./admin-operations";
 import { WalletSummary } from "./wallet-summary";
 import { RefreshStatus, useLiveRefresh } from "./live-refresh";
@@ -255,7 +254,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 rounded-lg border border-[#303030] bg-[#161616] px-3">
-            <Search size={16} className="text-[#929292]" />
+            <Search size={16} className="text-[var(--console-muted)]" />
             <input
               aria-label="搜索订单或出单人"
               maxLength={80}
@@ -298,7 +297,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
           items={view === "overview" ? audit.items.slice(0, 4) : audit.items}
         />
       ) : (
-        <p className="rounded-lg border border-[#262626] py-14 text-center text-sm text-[#929292]">
+        <p className="rounded-lg border border-[#262626] py-14 text-center text-sm text-[var(--console-muted)]">
           当前条件下暂无订单
         </p>
       )}
@@ -311,7 +310,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
           >
             上一页
           </button>
-          <span className="font-mono text-[#929292]">
+          <span className="font-mono text-[var(--console-muted)]">
             {page} / {audit.totalPages}
           </span>
           <button
@@ -326,7 +325,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
     </section>
   );
   return (
-    <div className="console-app min-h-dvh bg-[var(--console-bg)] text-[#F5F5F5]">
+    <div className="console-app min-h-dvh bg-[var(--console-bg)] text-[var(--console-text)]">
       <header className="console-topbar sticky top-0 z-30 border-b border-[#262626] bg-[var(--console-bg)]/90 backdrop-blur-md">
         <div className="mx-auto flex min-h-16 max-w-[1680px] items-center justify-between gap-4 px-6 lg:px-10">
           <div className="flex items-center gap-4">
@@ -339,7 +338,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
               </span>
               CONSOLE
             </span>
-            <span className="hidden border-l border-[#343434] pl-4 text-xs text-[#949494] sm:block">
+            <span className="hidden border-l border-[var(--console-line)] pl-4 text-xs text-[#949494] sm:block">
               平台资金工作台
             </span>
           </div>
@@ -388,7 +387,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
         </nav>
         <div className="console-heading mb-7 mt-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="console-breadcrumb text-xs text-[#787878]">
+            <p className="console-breadcrumb text-xs text-[var(--console-dim)]">
               管理中心 <span className="mx-2">/</span> {title}
             </p>
             <h1 className="mt-2 text-[28px] font-semibold tracking-tight">
@@ -453,71 +452,12 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
             {overviewError ? (
               errorPanel(overviewError)
             ) : (
-              <section className="console-metrics grid lg:grid-cols-[1fr_2fr]">
-                <article className="console-revenue min-w-0 p-5">
-                  <div className="flex items-center gap-3 text-sm text-[#999]">
-                    平台净收益
-                    <span className="rounded border border-[#353535] px-1.5 py-0.5 font-mono text-[11px] text-white">
-                      30%
-                    </span>
-                  </div>
-                  {overviewLoading ? (
-                    <Skeleton className="mt-5 h-14 w-64" />
-                  ) : (
-                    <p className="financial-number mt-4 text-[clamp(22px,2vw,32px)] font-medium">
-                      {displayAmount(overview?.platformTotalRevenue)}
-                    </p>
-                  )}
-                  <p className="mt-3 flex items-center gap-1.5 text-xs text-[#929292]">
-                    <ShieldCheck size={13} className="text-[var(--positive)]" />
-                    已扣除退款冲正 ·{" "}
-                    {period === "all" ? "累计净收益" : "本月净收益"}
-                  </p>
-                  <button
-                    className="console-revenue-action mt-6 flex min-h-9 items-center gap-2 text-sm font-medium"
-                    onClick={() => switchView("treasury")}
-                  >
-                    管理资金与提现
-                    <ArrowUpRight size={16} />
-                  </button>
-                </article>
-                <div className="grid grid-cols-1 sm:grid-cols-3">
-                  {[
-                    {
-                      label: "全网净成交 GMV",
-                      value: displayAmount(overview?.totalGmv),
-                      detail: "支付减退款",
-                    },
-                    {
-                      label: "代理净分成",
-                      value: displayAmount(overview?.agentCommissionPool),
-                      detail: "70% 奖金池",
-                    },
-                    {
-                      label: "网络合伙人",
-                      value: overview ? String(overview.agentCount) : "—",
-                      detail: "一级 + 二级",
-                    },
-                  ].map((metric) => (
-                    <article
-                      key={metric.label}
-                      className="console-metric min-w-0 p-5"
-                    >
-                      <p className="text-sm text-[#999]">{metric.label}</p>
-                      {overviewLoading ? (
-                        <Skeleton className="mt-7 h-8 w-full" />
-                      ) : (
-                        <p className="financial-number mt-4 text-[clamp(19px,1.6vw,27px)] font-medium">
-                          {metric.value}
-                        </p>
-                      )}
-                      <p className="mt-3 text-xs text-[#787878]">
-                        {metric.detail}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </section>
+              <AdminMetrics
+                overview={overview}
+                overviewLoading={overviewLoading}
+                period={period}
+                onManage={() => switchView("treasury")}
+              />
             )}
             <details className="console-rules">
               <summary>
@@ -533,7 +473,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
                       className={
                         twoLevel
                           ? "text-white underline underline-offset-4"
-                          : "text-[#777]"
+                          : "text-[var(--console-dim)]"
                       }
                     >
                       两级订单
@@ -544,7 +484,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
                       className={
                         !twoLevel
                           ? "text-white underline underline-offset-4"
-                          : "text-[#777]"
+                          : "text-[var(--console-dim)]"
                       }
                     >
                       直推订单
@@ -555,14 +495,16 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
                   className="mt-6 flex h-2 gap-1 overflow-hidden rounded-sm"
                   aria-hidden="true"
                 >
-                  <span className="w-[30%] bg-[#EBEBEB]" />
+                  <span className="w-[30%] bg-[var(--console-text)]" />
                   <span
                     style={{ width: twoLevel ? "49%" : "70%" }}
-                    className="bg-[#757575]"
+                    className="bg-[var(--console-muted)]"
                   />
-                  {twoLevel && <span className="w-[21%] bg-[#C5FF59]" />}
+                  {twoLevel && (
+                    <span className="w-[21%] bg-[var(--positive)]" />
+                  )}
                 </div>
-                <div className="mt-4 flex flex-wrap justify-between gap-3 text-xs text-[#999]">
+                <div className="mt-4 flex flex-wrap justify-between gap-3 text-xs text-[var(--console-muted)]">
                   <span>
                     平台留存{" "}
                     <strong className="ml-1 font-mono text-white">30%</strong>
@@ -580,7 +522,7 @@ export function AdminDashboard({ demo = false }: { demo?: boolean }) {
                     </span>
                   )}
                 </div>
-                <p className="mt-4 text-[11px] text-[#777]">
+                <p className="mt-4 text-[11px] text-[var(--console-dim)]">
                   按订单利润分配，尾差按结算规则处理。
                 </p>
               </section>

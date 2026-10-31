@@ -56,7 +56,13 @@ async def network_page(session, parent_id, page, page_size, window, query):
     ).all()
     ids = [user.id for user, *_ in rows]
     if not ids:
-        return {"items": [], "page": page, "pageSize": page_size, "total": total, "totalPages": 0}
+        return {
+            "items": [],
+            "page": page,
+            "pageSize": page_size,
+            "total": total,
+            "totalPages": (total + page_size - 1) // page_size,
+        }
     orders = {
         owner: (gmv, count)
         for owner, gmv, count in (

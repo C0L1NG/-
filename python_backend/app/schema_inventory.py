@@ -28,6 +28,14 @@ QUERIES = {
     "triggers": """SELECT c.relname AS object,t.tgname AS name,t.tgenabled::text AS enabled,pg_get_triggerdef(t.oid) AS definition
       FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname=current_schema() AND NOT t.tgisinternal ORDER BY c.relname,t.tgname""",
+    "foreign_key_triggers": """SELECT r.relname AS object,k.conname AS name,
+      c.relname AS constraint_table,t.tgtype::int AS event,t.tgenabled::text AS enabled
+      FROM pg_trigger t JOIN pg_class r ON r.oid=t.tgrelid
+      JOIN pg_namespace n ON n.oid=r.relnamespace
+      JOIN pg_constraint k ON k.oid=t.tgconstraint
+      JOIN pg_class c ON c.oid=k.conrelid
+      WHERE n.nspname=current_schema() AND t.tgisinternal AND k.contype='f'
+      ORDER BY r.relname,k.conname,c.relname,t.tgtype""",
     "functions": """SELECT p.proname AS name,pg_get_functiondef(p.oid) AS definition FROM pg_proc p
       JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=current_schema()
       AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid='pg_proc'::regclass AND d.objid=p.oid AND d.deptype='e')

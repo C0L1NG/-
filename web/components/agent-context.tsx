@@ -133,7 +133,7 @@ export function AgentShell({
     >
       <div
         className={
-          "partner-shell min-h-dvh bg-[#080c09] font-sans antialiased " +
+          "partner-shell min-h-dvh bg-[var(--console-bg)] font-sans antialiased " +
           (theme === "dark" ? "agent-dark" : "agent-light")
         }
       >

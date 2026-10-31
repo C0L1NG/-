@@ -77,11 +77,11 @@ export function AdminMobileShell({
     <AdminMobileContext.Provider
       value={{ demo, all, day, loading, refresh, notify, revision, updatedAt }}
     >
-      <div className="min-h-dvh bg-[#050505] font-sans text-[#F5F5F5] antialiased">
-        <div className="relative mx-auto min-h-dvh w-full max-w-[430px] overflow-x-hidden bg-[#0A0A0A]">
+      <div className="min-h-dvh bg-[var(--console-bg)] font-sans text-[var(--console-text)] antialiased">
+        <div className="relative mx-auto min-h-dvh w-full max-w-[430px] overflow-x-hidden bg-[var(--console-bg)]">
           <main className="px-5 pb-[calc(112px+env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))]">
             {demo && (
-              <span className="mb-4 flex items-center gap-2 border-b border-[#262626] pb-3 text-[11px] text-[#929292]">
+              <span className="mb-4 flex items-center gap-2 border-b border-[#262626] pb-3 text-[11px] text-[var(--console-muted)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--action-bg)]" />
                 公开演示 · 虚构数据
               </span>
@@ -91,7 +91,7 @@ export function AdminMobileShell({
                 type="button"
                 role="alert"
                 onClick={refresh}
-                className="mb-5 flex w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-[#121212] px-4 py-3 text-left text-[11px] text-[#BBBBBB]"
+                className="mb-5 flex w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-[var(--console-surface)] px-4 py-3 text-left text-[11px] text-[var(--console-text)]"
               >
                 <span className="flex-1">{error}</span>
                 <RefreshCw size={15} />
@@ -107,7 +107,7 @@ export function AdminMobileShell({
           </main>
           <nav
             aria-label="老板移动端导航"
-            className="fixed bottom-0 left-1/2 z-30 flex w-full max-w-[430px] -translate-x-1/2 justify-around border-t border-white/[0.08] bg-[#0A0A0A]/85 px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-lg"
+            className="owner-nav fixed bottom-0 left-1/2 z-30 flex w-full max-w-[430px] -translate-x-1/2 justify-around border-t border-white/[0.08] bg-[var(--console-bg)]/85 px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-lg"
           >
             {tabs.map(({ href, label, icon: Icon }) => {
               const active =
@@ -122,7 +122,9 @@ export function AdminMobileShell({
                   aria-current={active ? "page" : undefined}
                   className={
                     "flex w-20 flex-col items-center gap-1.5 rounded-lg py-1 text-xs font-semibold " +
-                    (active ? "text-white" : "text-[#929292]")
+                    (active
+                      ? "text-[var(--positive)]"
+                      : "text-[var(--console-muted)]")
                   }
                 >
                   <Icon size={21} strokeWidth={active ? 2 : 1.6} />
@@ -135,7 +137,7 @@ export function AdminMobileShell({
             <div
               role="status"
               aria-live="polite"
-              className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 max-w-[calc(100vw-32px)] w-max text-center rounded-lg border border-white/[0.08] bg-[#242424] px-4 py-2.5 text-[12px] text-[#F5F5F5]"
+              className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 max-w-[calc(100vw-32px)] w-max text-center rounded-lg border border-white/[0.08] bg-[var(--console-raised)] px-4 py-2.5 text-[12px] text-[var(--console-text)]"
             >
               {toast}
             </div>

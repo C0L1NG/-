@@ -1,18 +1,22 @@
 /* Generated from design/tokens.json. */
 page {
-  --radius-card: 48rpx;
+  --radius-card: 56rpx;
   --radius-control: 1998rpx;
   --space-module: 48rpx;
   --warning: #d9b66d;
-  --console-bg: #0b0f0b;
-  --console-surface: #141c13;
-  --console-raised: #182217;
+  --radius-input: 24rpx;
+  --space-page: 64rpx;
+  --console-bg: #11150f;
+  --console-surface: #292d26;
+  --console-raised: #353a31;
   --console-line: rgba(255, 255, 255, 0.08);
-  --console-text: #f4f5f0;
-  --console-muted: #8e9b8a;
-  --positive: #9fe870;
+  --console-text: #f3f5ed;
+  --console-muted: #a6aca0;
+  --positive: #a6e477;
   --negative: #f36673;
   --action-bg: #9fe870;
-  --action-text: #132a00;
+  --action-text: #173300;
   --focus: #9fe870;
+  --console-dim: #8b9385;
+  --console-soft: #1b3408;
 }

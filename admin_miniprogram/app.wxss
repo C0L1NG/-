@@ -14,7 +14,7 @@ page { background: var(--app-bg); color: var(--app-text); font-family: -apple-sy
 .spaced { margin-top: 24rpx; }
 .button, .secondary { min-height: 96rpx; line-height: 96rpx; border-radius: var(--radius-control); font-size: 26rpx; font-weight: 600; margin: 0; padding: 0 28rpx; }
 .button { background: var(--action-bg); color: var(--action-text); }
-.secondary { background: var(--app-raised); color: var(--app-text); border: 1rpx solid var(--app-line); }
+.secondary { background: #1b3408; color: var(--positive); border: 1rpx solid transparent; }
 button::after { border: 0; }
 button[disabled] { opacity: .4; }
 .pill { display: inline-block; border-radius: var(--radius-control); background: var(--app-raised); border: 1rpx solid var(--app-line); padding: 14rpx 22rpx; font-size: 24rpx; }
@@ -38,3 +38,9 @@ button[disabled] { opacity: .4; }
 .activity > .gain { max-width: 44%; text-align: right; }
 .refund-amount { color: var(--negative); }
 .reversed-amount { color: var(--app-muted); }
+
+.account-card { margin-top:32rpx; padding:16rpx; background:var(--app-surface); border-radius:56rpx; }
+.account-ribbon { position:relative; display:flex; align-items:center; justify-content:space-between; background:var(--action-bg); color:var(--action-text); border-radius:44rpx 44rpx 0 0; padding:34rpx; font-size:30rpx; font-weight:650; }
+.account-ribbon::after { content:""; position:absolute; width:100rpx; height:32rpx; bottom:-28rpx; left:calc(50% - 50rpx); border-radius:0 0 50% 50%; background:var(--action-bg); }
+.account-body { padding:48rpx 28rpx 28rpx; }
+.account-title { font-size:44rpx; font-weight:650; }

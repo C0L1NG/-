@@ -10,15 +10,15 @@
   ],
   "window": {
     "navigationBarTitleText": "合伙人账户",
-    "navigationBarBackgroundColor": "#0d140c",
+    "navigationBarBackgroundColor": "#11150f",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#0d140c",
+    "backgroundColor": "#11150f",
     "enablePullDownRefresh": true
   },
   "tabBar": {
-    "color": "#8e9b8a",
-    "selectedColor": "#9fe870",
-    "backgroundColor": "#0d140c",
+    "color": "#a6aca0",
+    "selectedColor": "#a6e477",
+    "backgroundColor": "#11150f",
     "borderStyle": "black",
     "list": [
       {

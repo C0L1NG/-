@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Money } from "./money";
 import {
   ArrowDownToLine,
   ArrowRight,
@@ -91,7 +92,7 @@ export function AgentHome() {
             )}
           </span>
           <span>
-            <span className="partner-greeting">欢迎回来</span>
+            <span className="partner-greeting">个人账户</span>
             <strong>{name}</strong>
           </span>
         </Link>
@@ -101,7 +102,7 @@ export function AgentHome() {
         </Link>
       </header>
       <section aria-label="我的可提现佣金" className="partner-balance">
-        <div className="flex items-center justify-between text-[13px] text-[var(--agent-muted)]">
+        <div className="partner-balance-label">
           <span>可提现佣金</span>
           <button
             type="button"
@@ -114,17 +115,16 @@ export function AgentHome() {
           </button>
         </div>
         <div className="partner-amount">
-          <span>¥</span>
-          {loading ? (
+          {loading && !overview ? (
             <Skeleton className="h-12 w-52" />
           ) : (
             <strong
               className="financial-number"
               style={{
-                fontSize: `clamp(22px, ${Math.min(11.5, 118 / balance.length)}vw, 48px)`,
+                fontSize: `clamp(22px, ${Math.min(10.5, 112 / balance.length)}vw, 46px)`,
               }}
             >
-              {balance}
+              <Money value={overview?.balance} hidden={hidden} />
             </strong>
           )}
         </div>
@@ -148,44 +148,57 @@ export function AgentHome() {
           </Link>
         </div>
       </section>
-      <section aria-label="收益概览" className="partner-stats">
-        <div>
-          <span>今日预计 · UTC</span>
-          <strong
-            className={
-              overview?.todayEstimatedEarnings?.startsWith("-")
-                ? "text-[var(--negative)]"
-                : "text-[var(--positive)]"
-            }
-          >
-            {displayAmount(overview?.todayEstimatedEarnings, hidden)}
-          </strong>
-        </div>
-        <div>
-          <span>历史净收益</span>
-          <strong>{displayAmount(overview?.totalEarned, hidden)}</strong>
-        </div>
-      </section>
-      <section aria-label="账户快捷入口" className="partner-shortcuts">
-        {[
-          { href: "/agent/team/", label: "直属团队", Icon: UsersRound },
-          { href: "/agent/progress/", label: "收益分析", Icon: ArrowRight },
-          { href: "/agent/withdrawals/", label: "提现记录", Icon: History },
-        ].map(({ href, label, Icon }) => (
-          <Link key={href} href={href}>
-            <span>
-              <Icon size={20} strokeWidth={1.6} />
-            </span>
-            {label}
+      <section aria-label="收益概览" className="partner-account">
+        <Link href="/agent/progress/" className="account-ribbon">
+          <span>
+            你的佣金账户 <ChevronRight size={20} />
+          </span>
+          <ArrowRight size={26} strokeWidth={2.5} />
+        </Link>
+        <div className="partner-account-body">
+          <Link href="/agent/progress/" className="account-title">
+            <h2>主账户</h2>
+            <ChevronRight size={23} />
           </Link>
-        ))}
+          <div className="account-currency-row">
+            <span className="currency-emblem">¥</span>
+            <div>
+              <span className="account-caption">历史净收益 · CNY</span>
+              <strong>{displayAmount(overview?.totalEarned, hidden)}</strong>
+            </div>
+          </div>
+          <div className="account-estimate">
+            <span>今日预计 · UTC</span>
+            <strong
+              className={
+                overview?.todayEstimatedEarnings?.startsWith("-")
+                  ? "text-[var(--negative)]"
+                  : "text-[var(--positive)]"
+              }
+            >
+              {displayAmount(overview?.todayEstimatedEarnings, hidden)}
+            </strong>
+          </div>
+          <div className="partner-shortcuts">
+            {[
+              { href: "/agent/team/", label: "直属团队", Icon: UsersRound },
+              { href: "/agent/progress/", label: "收益分析", Icon: ArrowRight },
+              { href: "/agent/withdrawals/", label: "提现记录", Icon: History },
+            ].map(({ href, label, Icon }) => (
+              <Link key={href} href={href}>
+                <Icon size={16} strokeWidth={1.7} />
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
       </section>
       <section aria-label="最新分润" className="partner-activity">
         <div className="flex items-center justify-between pb-2">
-          <h2 className="text-[18px] font-semibold tracking-tight">近期活动</h2>
+          <h2 className="text-[18px] font-semibold tracking-tight">交易</h2>
           <Link
             href="/agent/ledger/"
-            className="flex min-h-11 items-center gap-1 text-xs text-[var(--agent-muted)]"
+            className="activity-all flex min-h-11 items-center gap-1 text-sm text-[var(--agent-accent-text)]"
           >
             全部明细
             <ChevronRight size={14} />
@@ -198,7 +211,7 @@ export function AgentHome() {
               重试
             </button>
           </p>
-        ) : recentLoading ? (
+        ) : recentLoading && !recent.length ? (
           <Skeleton className="my-4 h-32 w-full" />
         ) : recent.length ? (
           recent.map((item) => (

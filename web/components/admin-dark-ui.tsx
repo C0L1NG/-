@@ -2,7 +2,8 @@
 
 import type { AuditItem } from "@/lib/admin-types";
 
-export const surface = "rounded-xl border border-white/[0.08] bg-[#121212]";
+export const surface =
+  "rounded-[28px] border border-transparent bg-[var(--console-surface)]";
 export function Skeleton({ className = "" }: { className?: string }) {
   return (
     <span
@@ -26,14 +27,14 @@ export function Status({ status }: { status: AuditItem["settlementStatus"] }) {
       className={
         "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold " +
         (settled
-          ? "border-[var(--positive)]/20 bg-[var(--positive)]/10 text-[#36C990]"
-          : "border-white/[0.08] bg-white/[0.04] text-[#929292]")
+          ? "border-white/[0.05] bg-white/[0.03] text-[var(--console-muted)]"
+          : "border-white/[0.08] bg-white/[0.04] text-[var(--console-muted)]")
       }
     >
       <span
         className={
           "h-1.5 w-1.5 rounded-full " +
-          (settled ? "bg-[var(--positive)]" : "bg-[#929292]")
+          (settled ? "bg-[var(--positive)]" : "bg-[var(--console-muted)]")
         }
       />
       {labels[status]}

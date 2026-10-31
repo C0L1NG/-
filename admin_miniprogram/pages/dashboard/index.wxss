@@ -1,1 +1,1 @@
-/* Shared dark surfaces. */
+.hero{padding:12rpx 0 36rpx;background:transparent;border:0}.hero .value{font-family:inherit;font-size:64rpx}.hero .pill{background:transparent;border:0;padding:0;font-weight:400;font-size:22rpx}.title{margin-bottom:40rpx}

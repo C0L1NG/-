@@ -8,9 +8,10 @@ import type { NetworkNode, NetworkPage } from "@/lib/api-contract.generated";
 import { demoNetworkNodes } from "@/lib/admin-demo-data";
 import { formatMoney } from "@/lib/money";
 
-const card = "rounded-xl border border-white/[0.08] bg-[#121212]";
+const card =
+  "rounded-xl border border-white/[0.08] bg-[var(--console-surface)]";
 const control =
-  "rounded-full border border-white/10 px-4 py-2 text-sm text-[#C5C5C5] disabled:opacity-30";
+  "rounded-full border border-white/10 px-4 py-2 text-sm text-[var(--console-text)] disabled:opacity-30";
 
 function Children({
   node,
@@ -38,7 +39,11 @@ function Children({
       controller.signal,
     )
       .then((result) => {
-        if (!controller.signal.aborted) setData(result);
+        if (!controller.signal.aborted) {
+          setData(result);
+          if (page > Math.max(1, result.totalPages))
+            setPage(Math.max(1, result.totalPages));
+        }
       })
       .catch(() => {
         if (!controller.signal.aborted) setError("二级团队暂时不可用");
@@ -51,7 +56,7 @@ function Children({
   const items = demo ? node.children : (data?.items ?? []);
   return (
     <div className="border-t border-white/5 px-5 py-5">
-      <p className="mb-4 text-xs text-[#929292]">
+      <p className="mb-4 text-xs text-[var(--console-muted)]">
         直属二级 · 21% 奖励仅流向该导师
       </p>
       {error && (
@@ -60,24 +65,24 @@ function Children({
         </button>
       )}
       {loading && !data ? (
-        <p className="text-sm text-[#929292]">正在加载团队…</p>
+        <p className="text-sm text-[var(--console-muted)]">正在加载团队…</p>
       ) : (
-        <div className="ml-3 space-y-2 border-l border-[#343434] pl-4">
+        <div className="ml-3 space-y-2 border-l border-[var(--console-line)] pl-4">
           {items.map((child) => (
             <div
               key={child.id}
-              className="flex flex-wrap items-center gap-3 rounded-lg bg-[#0D0D0D] p-4"
+              className="flex flex-wrap items-center gap-3 rounded-lg bg-[var(--console-bg)] p-4"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-xs">
                 {child.displayName.slice(0, 2)}
               </span>
               <span className="min-w-0 flex-1">
                 <strong className="block text-sm">{child.displayName}</strong>
-                <span className="mt-1 block text-xs text-[#929292]">
+                <span className="mt-1 block text-xs text-[var(--console-muted)]">
                   {child.ownOrderCount} 笔 · GMV ¥{formatMoney(child.ownGmv)}
                 </span>
               </span>
-              <span className="text-right text-xs text-[#929292]">
+              <span className="text-right text-xs text-[var(--console-muted)]">
                 导师奖励
                 <strong className="mt-1 block font-mono text-sm text-[var(--positive)]">
                   ¥{formatMoney(child.mentorPaidUp)}
@@ -86,11 +91,11 @@ function Children({
             </div>
           ))}
           {!items.length && (
-            <p className="text-sm text-[#929292]">暂无直属成员</p>
+            <p className="text-sm text-[var(--console-muted)]">暂无直属成员</p>
           )}
         </div>
       )}
-      {!demo && (data?.totalPages ?? 0) > 1 && (
+      {!demo && ((data?.totalPages ?? 0) > 1 || page > 1) && (
         <div className="mt-4 flex items-center justify-end gap-3">
           <button
             className={control}
@@ -165,6 +170,8 @@ export function AdminNetwork({
       .then((result) => {
         if (!controller.signal.aborted) {
           setData(result);
+          if (page > Math.max(1, result.totalPages))
+            setPage(Math.max(1, result.totalPages));
           setSelected((previous) =>
             previous
               ? (result.items.find((item) => item.id === previous.id) ??
@@ -194,14 +201,16 @@ export function AdminNetwork({
     <section className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs tracking-widest text-[#929292]">NETWORK</p>
+          <p className="text-xs tracking-widest text-[var(--console-muted)]">
+            NETWORK
+          </p>
           <h2 className="mt-2 text-xl font-semibold">代理网络</h2>
-          <p className="mt-2 text-sm text-[#929292]">
+          <p className="mt-2 text-sm text-[var(--console-muted)]">
             {period === "month" ? "本月 · UTC" : "全周期"} · 按平台贡献排序
           </p>
         </div>
-        <label className="flex items-center gap-2 rounded-full border border-white/10 bg-[#121212] px-4 py-2">
-          <Search size={16} className="text-[#929292]" />
+        <label className="flex items-center gap-2 rounded-full border border-white/10 bg-[var(--console-surface)] px-4 py-2">
+          <Search size={16} className="text-[var(--console-muted)]" />
           <input
             aria-label="搜索一级代理"
             value={query}
@@ -213,7 +222,10 @@ export function AdminNetwork({
         </label>
       </div>
       {error && (
-        <div role="alert" className={card + " p-6 text-sm text-[#929292]"}>
+        <div
+          role="alert"
+          className={card + " p-6 text-sm text-[var(--console-muted)]"}
+        >
           {error}
           <button
             className={control + " ml-4"}
@@ -227,7 +239,11 @@ export function AdminNetwork({
         </div>
       )}
       {loading && !data ? (
-        <div className={card + " animate-pulse p-12 text-sm text-[#929292]"}>
+        <div
+          className={
+            card + " animate-pulse p-12 text-sm text-[var(--console-muted)]"
+          }
+        >
           正在加载…
         </div>
       ) : (
@@ -243,7 +259,7 @@ export function AdminNetwork({
               <article key={node.id} className={card}>
                 <div className="p-5">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#242424] font-bold text-[var(--positive)]">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--console-raised)] font-bold text-[var(--positive)]">
                       {node.displayName.slice(0, 2)}
                     </span>
                     <button
@@ -254,7 +270,7 @@ export function AdminNetwork({
                       <strong className="block truncate">
                         {node.displayName}
                       </strong>
-                      <span className="mt-1 block font-mono text-xs text-[#929292]">
+                      <span className="mt-1 block font-mono text-xs text-[var(--console-muted)]">
                         {node.referralCode}
                       </span>
                     </button>
@@ -280,10 +296,10 @@ export function AdminNetwork({
                       />
                     </button>
                   </div>
-                  <div className="mt-5 grid grid-cols-3 gap-3 text-xs text-[#929292]">
+                  <div className="mt-5 grid grid-cols-3 gap-3 text-xs text-[var(--console-muted)]">
                     <span>
                       团队 GMV
-                      <strong className="mt-2 block break-all font-mono text-sm text-[#F5F5F5]">
+                      <strong className="mt-2 block break-all font-mono text-sm text-[var(--console-text)]">
                         ¥{formatMoney(node.teamGmv)}
                       </strong>
                     </span>
@@ -295,7 +311,7 @@ export function AdminNetwork({
                     </span>
                     <span>
                       直属团队
-                      <strong className="mt-2 block font-mono text-sm text-[#F5F5F5]">
+                      <strong className="mt-2 block font-mono text-sm text-[var(--console-text)]">
                         {node.teamSize} 人
                       </strong>
                     </span>
@@ -312,7 +328,7 @@ export function AdminNetwork({
               </article>
             ))}
             {!nodes.length && (
-              <p className={card + " p-8 text-sm text-[#929292]"}>
+              <p className={card + " p-8 text-sm text-[var(--console-muted)]"}>
                 没有符合条件的一级代理
               </p>
             )}
@@ -325,21 +341,25 @@ export function AdminNetwork({
               </h3>
               {selected ? (
                 <>
-                  <p className="mt-6 text-sm text-[#929292]">钱包可用余额</p>
+                  <p className="mt-6 text-sm text-[var(--console-muted)]">
+                    钱包可用余额
+                  </p>
                   <p className="mt-2 break-all font-mono text-3xl">
                     ¥{formatMoney(selected.balance)}
                   </p>
-                  <p className="mt-6 text-sm text-[#929292]">历史净收益</p>
+                  <p className="mt-6 text-sm text-[var(--console-muted)]">
+                    历史净收益
+                  </p>
                   <p className="mt-2 font-mono">
                     ¥{formatMoney(selected.totalEarned)}
                   </p>
-                  <p className="mt-6 text-sm text-[#929292]">
+                  <p className="mt-6 text-sm text-[var(--console-muted)]">
                     直属团队 {selected.teamSize} 人 · 自身 GMV ¥
                     {formatMoney(selected.ownGmv)}
                   </p>
                 </>
               ) : (
-                <p className="mt-4 text-sm text-[#929292]">
+                <p className="mt-4 text-sm text-[var(--console-muted)]">
                   点击代理昵称查看钱包与团队规模。
                 </p>
               )}
@@ -354,23 +374,23 @@ export function AdminNetwork({
         >
           <dl className="space-y-5 text-sm">
             <div>
-              <dt className="text-[#929292]">钱包可用余额</dt>
+              <dt className="text-[var(--console-muted)]">钱包可用余额</dt>
               <dd className="mt-2 break-all font-mono text-2xl">
                 ¥{formatMoney(selected.balance)}
               </dd>
             </div>
             <div>
-              <dt className="text-[#929292]">历史净收益</dt>
+              <dt className="text-[var(--console-muted)]">历史净收益</dt>
               <dd className="mt-2 break-all font-mono">
                 ¥{formatMoney(selected.totalEarned)}
               </dd>
             </div>
             <div>
-              <dt className="text-[#929292]">直属成员</dt>
+              <dt className="text-[var(--console-muted)]">直属成员</dt>
               <dd className="mt-2 font-mono">{selected.teamSize} 人</dd>
             </div>
             <div>
-              <dt className="text-[#929292]">
+              <dt className="text-[var(--console-muted)]">
                 团队 GMV · {period === "month" ? "本月" : "全周期"}
               </dt>
               <dd className="mt-2 break-all font-mono">
@@ -380,9 +400,9 @@ export function AdminNetwork({
           </dl>
         </Sheet>
       )}
-      {!demo && (data?.totalPages ?? 0) > 1 && (
+      {!demo && ((data?.totalPages ?? 0) > 1 || page > 1) && (
         <div className="flex items-center justify-between">
-          <span className="text-xs text-[#929292]">
+          <span className="text-xs text-[var(--console-muted)]">
             共 {data?.total} 位一级代理 · 第 {page} 页
           </span>
           <div className="flex gap-2">

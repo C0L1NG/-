@@ -80,7 +80,9 @@ function AuditRow({
         <td
           className={
             "whitespace-nowrap px-5 py-4 font-mono " +
-            (reversed ? "text-[#929292]" : "text-[var(--positive)]")
+            (reversed
+              ? "text-[var(--console-muted)]"
+              : "text-[var(--positive)]")
           }
         >
           {amount(item.platform?.amount)}
@@ -89,7 +91,7 @@ function AuditRow({
           <span className="block whitespace-nowrap font-mono">
             {amount(item.promoterCommission?.amount)}
           </span>
-          <span className="mt-1 block text-xs text-[#929292]">
+          <span className="mt-1 block text-xs text-[var(--console-muted)]">
             {item.promoterCommission?.recipientName ?? "待分润"} ·{" "}
             {item.promoterCommission?.ratePercent ?? "—"}%
           </span>
@@ -98,7 +100,7 @@ function AuditRow({
           <span className="block whitespace-nowrap font-mono">
             {amount(item.mentorCommission?.amount)}
           </span>
-          <span className="mt-1 block text-xs text-[#929292]">
+          <span className="mt-1 block text-xs text-[var(--console-muted)]">
             {item.mentorCommission?.recipientName ?? "无直接上级"}
           </span>
         </td>

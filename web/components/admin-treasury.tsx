@@ -195,10 +195,10 @@ export function AdminTreasury({
   return (
     <section
       id="funds"
-      className="scroll-mt-24 rounded-xl border border-white/10 bg-[#121212] p-5 sm:p-6"
+      className="scroll-mt-24 rounded-xl border border-white/10 bg-[var(--console-surface)] p-5 sm:p-6"
     >
       <h2 className="text-xl font-bold">资金执行与提现审核</h2>
-      <p className="mt-2 text-sm text-[#929292]">
+      <p className="mt-2 text-sm text-[var(--console-muted)]">
         操作留痕 · 渠道付款需核对真实流水后确认
       </p>
       <SystemHealthPanel demo={demo} refreshKey={refreshKey} />
@@ -218,7 +218,7 @@ export function AdminTreasury({
               "rounded-full px-4 py-2 text-sm " +
               (tab === value
                 ? "bg-[var(--action-bg)] font-bold text-[var(--action-text)]"
-                : "bg-white/5 text-[#929292]")
+                : "bg-white/5 text-[var(--console-muted)]")
             }
           >
             {label}
@@ -253,7 +253,7 @@ export function AdminTreasury({
             onComplete={onComplete}
           />
           {demo ? (
-            <p className="mt-5 rounded-lg bg-[#0A0A0A] p-4 text-sm text-[#C5C5C5]">
+            <p className="mt-5 rounded-lg bg-[var(--console-bg)] p-4 text-sm text-[var(--console-text)]">
               演示：林默的银行卡收款凭据待核验。展示账户状态，操作不提交。
             </p>
           ) : (
@@ -265,7 +265,7 @@ export function AdminTreasury({
         </div>
       ) : demo ? (
         <div className="space-y-3">
-          <p className="text-sm text-[#929292]">
+          <p className="text-sm text-[var(--console-muted)]">
             虚构待办 · 演示操作不提交付款
           </p>
           {demoWithdrawals
@@ -273,7 +273,7 @@ export function AdminTreasury({
             .map((item) => (
               <article
                 key={item.id}
-                className="rounded-lg bg-[#0A0A0A] p-4 text-sm"
+                className="rounded-lg bg-[var(--console-bg)] p-4 text-sm"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <strong className="font-mono text-[var(--positive)]">
@@ -281,11 +281,11 @@ export function AdminTreasury({
                   </strong>
                   <span>{labels[item.status]}</span>
                 </div>
-                <p className="mt-2 text-[#929292]">
+                <p className="mt-2 text-[var(--console-muted)]">
                   {item.userName} ·{" "}
                   {item.accountScope === "platform" ? "商户" : "代理"}
                 </p>
-                <p className="mt-1 break-all font-mono text-xs text-[#929292]">
+                <p className="mt-1 break-all font-mono text-xs text-[var(--console-muted)]">
                   {item.id}
                 </p>
               </article>
@@ -293,7 +293,7 @@ export function AdminTreasury({
         </div>
       ) : (
         <>
-          <label className="mb-4 flex flex-wrap items-center gap-3 text-sm text-[#929292]">
+          <label className="mb-4 flex flex-wrap items-center gap-3 text-sm text-[var(--console-muted)]">
             提现状态
             <select
               aria-label="筛选提现状态"
@@ -302,7 +302,7 @@ export function AdminTreasury({
                 setStatus(event.target.value as typeof status);
                 setPage(1);
               }}
-              className="min-h-11 rounded-full border border-white/10 bg-[#0A0A0A] px-4 text-[#F5F5F5]"
+              className="min-h-11 rounded-full border border-white/10 bg-[var(--console-bg)] px-4 text-[var(--console-text)]"
             >
               <option value="">全部</option>
               {Object.entries(labels).map(([value, label]) => (
@@ -324,7 +324,7 @@ export function AdminTreasury({
             </p>
           )}
           {loading ? (
-            <p className="text-sm text-[#929292]">正在加载…</p>
+            <p className="text-sm text-[var(--console-muted)]">正在加载…</p>
           ) : (
             !error && (
               <>
@@ -332,7 +332,7 @@ export function AdminTreasury({
                   {items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-[#0A0A0A] p-4"
+                      className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-[var(--console-bg)] p-4"
                     >
                       <span>
                         <strong className="font-mono text-[var(--positive)]">
@@ -342,7 +342,7 @@ export function AdminTreasury({
                           {item.accountScope === "platform" ? "商户" : "代理"} ·{" "}
                           {labels[item.status]}
                         </span>
-                        <span className="mt-1 block font-mono text-xs text-[#929292]">
+                        <span className="mt-1 block font-mono text-xs text-[var(--console-muted)]">
                           {item.userName || "未命名账户"} ·{" "}
                           {item.createdAt.slice(0, 16)}
                         </span>
@@ -384,7 +384,9 @@ export function AdminTreasury({
                   ))}
                 </div>
                 {!items.length && (
-                  <p className="text-sm text-[#929292]">暂无提现申请</p>
+                  <p className="text-sm text-[var(--console-muted)]">
+                    暂无提现申请
+                  </p>
                 )}
                 <div className="mt-4 flex justify-end gap-4 text-sm">
                   <button
@@ -410,7 +412,7 @@ export function AdminTreasury({
       )}
       {details && (
         <Sheet title="核对付款账户" onClose={() => setDetails(null)}>
-          <div className="space-y-4 text-[#F5F5F5]">
+          <div className="space-y-4 text-[var(--console-text)]">
             <p className="font-mono text-2xl text-[var(--positive)]">
               {displayAmount(details.amount)}
             </p>
@@ -449,7 +451,7 @@ export function AdminTreasury({
             >
               {copied ? "已复制付款账户" : "复制完整付款账户"}
             </button>
-            <p className="text-sm leading-6 text-[#929292]">
+            <p className="text-sm leading-6 text-[var(--console-muted)]">
               提现单：{details.withdrawalId}
               <br />
               在付款渠道核对账户并使用提现单号作为幂等业务单号。只有渠道明确成功才能确认入账；状态未知时保持处理中，先查询渠道结果。
@@ -551,7 +553,7 @@ export function AdminTreasury({
                   </button>
                 </form>
               )}
-            <div className="space-y-2 text-xs text-[#929292]">
+            <div className="space-y-2 text-xs text-[var(--console-muted)]">
               {details.history.map((entry) => (
                 <p key={entry.version}>
                   {entry.createdAt.slice(0, 16)} · {entry.actorName} ·{" "}
